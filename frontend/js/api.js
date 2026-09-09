@@ -1,7 +1,7 @@
 const API_BASE =
   (typeof localStorage !== "undefined" && localStorage.getItem("smartprep_api_base")) ||
   (typeof window !== "undefined" && window.SMARTPREP_API_BASE) ||
-  "http://localhost:8080/api";
+  "https://smartprep-ai-2s20.onrender.com/api";
 
 const Api = {
   async request(path, options = {}) {
@@ -23,7 +23,7 @@ const Api = {
       });
     } catch (error) {
       throw new Error(
-        `Cannot reach SMARTPREP API at ${API_BASE}. Check backend URL in js/config.js (Render) or that localhost:8080 is running.`
+        `Cannot reach SMARTPREP API at ${API_BASE}. Check that the Render backend is awake and the URL is correct.`
       );
     }
 
