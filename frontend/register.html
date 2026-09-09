@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Register — SMARTPREP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <div class="panel">
+        <nav class="nav">
+          <a class="brand" href="index.html">
+            <span class="brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M7 4L3 12L7 20" stroke="#111" stroke-width="2.4" stroke-linecap="round" />
+                <path d="M17 4L21 12L17 20" stroke="#111" stroke-width="2.4" stroke-linecap="round" />
+              </svg>
+            </span>
+            SMARTPREP
+          </a>
+          <a class="pill" href="login.html">
+            <span class="pill-dot">→</span>
+            Sign in
+          </a>
+        </nav>
+
+        <main class="app-main">
+          <h1 class="page-title fade-up">Create your space</h1>
+          <p class="page-sub fade-up">Set up SMARTPREP and start adaptive mock interviews in minutes.</p>
+
+          <form class="form-card fade-up-delay" id="registerForm">
+            <div class="form-group">
+              <label for="name">Full name</label>
+              <input id="name" name="name" type="text" required placeholder="Alex Rivera" />
+            </div>
+            <div class="form-group">
+              <label for="email">Email</label>
+              <input id="email" name="email" type="email" required placeholder="you@example.com" />
+            </div>
+            <div class="form-group">
+              <label for="password">Password</label>
+              <input id="password" name="password" type="password" required minlength="6" placeholder="At least 6 characters" />
+            </div>
+            <div class="form-group">
+              <label for="targetRole">Target role</label>
+              <select id="targetRole" name="targetRole" required>
+                <option value="Software Engineer">Software Engineer</option>
+                <option value="Data Analyst">Data Analyst</option>
+                <option value="Product Manager">Product Manager</option>
+                <option value="System Design">System Design</option>
+                <option value="HR / Behavioral">HR / Behavioral</option>
+              </select>
+            </div>
+            <div class="form-actions">
+              <button class="pill" type="submit">
+                <span class="pill-dot">+</span>
+                Create account
+              </button>
+              <span class="muted-link">Have an account? <a href="login.html">Login</a></span>
+            </div>
+            <p class="error-text hidden" id="errorBox"></p>
+          </form>
+        </main>
+      </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+      document.getElementById("registerForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const errorBox = document.getElementById("errorBox");
+        errorBox.classList.add("hidden");
+        try {
+          await Auth.register({
+            name: document.getElementById("name").value.trim(),
+            email: document.getElementById("email").value.trim(),
+            password: document.getElementById("password").value,
+            targetRole: document.getElementById("targetRole").value,
+          });
+          window.location.href = "dashboard.html";
+        } catch (err) {
+          errorBox.textContent = err.message || "Registration failed";
+          errorBox.classList.remove("hidden");
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Interview — SMARTPREP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <div class="panel">
+        <nav class="nav">
+          <a class="brand" href="index.html">
+            <span class="brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M7 4L3 12L7 20" stroke="#111" stroke-width="2.4" stroke-linecap="round" />
+                <path d="M17 4L21 12L17 20" stroke="#111" stroke-width="2.4" stroke-linecap="round" />
+              </svg>
+            </span>
+            SMARTPREP
+          </a>
+          <ul class="nav-links">
+            <li><a href="dashboard.html">Dashboard</a></li>
+            <li><a class="active" href="interview.html">Interview</a></li>
+            <li><a href="chatbot.html">Coach</a></li>
+            <li><a href="results.html">Results</a></li>
+          </ul>
+          <span class="status-chip" id="statusChip">
+            <span class="status-dot"></span>
+            Ready
+          </span>
+        </nav>
+
+        <main class="app-main">
+          <div id="setupView">
+            <h1 class="page-title">Configure your mock</h1>
+            <p class="page-sub">Choose a role and intensity. SMARTPREP adapts as you answer.</p>
+            <form class="form-card" id="startForm">
+              <div class="form-group">
+                <label for="role">Interview role</label>
+                <select id="role" required>
+                  <option value="Software Engineer">Software Engineer</option>
+                  <option value="Data Analyst">Data Analyst</option>
+                  <option value="Product Manager">Product Manager</option>
+                  <option value="System Design">System Design</option>
+                  <option value="HR / Behavioral">HR / Behavioral</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="difficulty">Difficulty</label>
+                <select id="difficulty" required>
+                  <option value="EASY">Easy</option>
+                  <option value="MEDIUM" selected>Medium</option>
+                  <option value="HARD">Hard</option>
+                </select>
+              </div>
+              <div class="form-actions">
+                <button class="pill" type="submit">
+                  <span class="pill-dot">▶</span>
+                  Enter interview room
+                </button>
+              </div>
+              <p class="error-text hidden" id="setupError"></p>
+            </form>
+          </div>
+
+          <div id="roomView" class="hidden">
+            <div class="interview-layout">
+              <section class="question-stage">
+                <div class="aura" aria-hidden="true"></div>
+                <div class="room-orb" aria-hidden="true"></div>
+                <div class="round-meta">
+                  <span id="roundLabel">Question 1</span>
+                  <span>•</span>
+                  <span id="roleLabel">Software Engineer</span>
+                  <span>•</span>
+                  <span id="timerLabel">00:00</span>
+                </div>
+                <h2 class="question-text" id="questionText">Loading question…</h2>
+                <div class="answer-box form-group">
+                  <label for="answer">Your answer</label>
+                  <textarea id="answer" placeholder="Speak your thinking clearly. Structure beats length."></textarea>
+                </div>
+                <div class="form-actions">
+                  <button class="pill" type="button" id="submitAnswerBtn">
+                    <span class="pill-dot">→</span>
+                    Submit answer
+                  </button>
+                  <button class="pill pill-light" type="button" id="endBtn">
+                    <span class="pill-dot">■</span>
+                    End session
+                  </button>
+                </div>
+                <p class="error-text hidden" id="roomError"></p>
+              </section>
+
+              <aside class="side-panel">
+                <div class="block-label">Live evaluation</div>
+                <h3 class="block-title" style="font-size: 1.3rem">After each answer</h3>
+                <p class="block-text" id="liveHint">
+                  Submit a response to receive score, strengths, and the next adaptive question.
+                </p>
+                <div class="feedback-box hidden" id="feedbackBox">
+                  <h3>Score: <span id="feedbackScore">—</span>/10</h3>
+                  <p id="feedbackText"></p>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/interview.js"></script>
+  </body>
+</html>

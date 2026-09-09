@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Results — SMARTPREP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <div class="panel">
+        <nav class="nav">
+          <a class="brand" href="index.html">
+            <span class="brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M7 4L3 12L7 20" stroke="#111" stroke-width="2.4" stroke-linecap="round" />
+                <path d="M17 4L21 12L17 20" stroke="#111" stroke-width="2.4" stroke-linecap="round" />
+              </svg>
+            </span>
+            SMARTPREP
+          </a>
+          <ul class="nav-links">
+            <li><a href="dashboard.html">Dashboard</a></li>
+            <li><a href="interview.html">Interview</a></li>
+            <li><a href="chatbot.html">Coach</a></li>
+            <li><a class="active" href="results.html">Results</a></li>
+          </ul>
+          <a class="pill" href="interview.html">
+            <span class="pill-dot">+</span>
+            Practice again
+          </a>
+        </nav>
+
+        <main class="app-main">
+          <h1 class="page-title">Session report</h1>
+          <p class="page-sub" id="reportSub">Review your latest mock interview performance.</p>
+
+          <div class="grid-3">
+            <div class="stat">
+              <div class="stat-label">Overall score</div>
+              <div class="stat-value" id="overallScore">—</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Questions</div>
+              <div class="stat-value" id="questionCount">—</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Role</div>
+              <div class="stat-value" id="reportRole" style="font-size: 1.35rem">—</div>
+            </div>
+          </div>
+
+          <section class="section">
+            <div class="section-head">
+              <h2>Question breakdown</h2>
+            </div>
+            <div class="list" id="breakdownList">
+              <div class="list-item">
+                <div>
+                  <h3>No report loaded</h3>
+                  <p>Complete an interview session to see detailed feedback.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="section">
+            <div class="section-head">
+              <h2>Upgrade plan</h2>
+            </div>
+            <div class="list-item">
+              <div>
+                <h3 id="planTitle">Personalized next steps</h3>
+                <p id="planText">Finish a session to unlock recommended practice topics.</p>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/results.js"></script>
+  </body>
+</html>

@@ -1,0 +1,18 @@
+# Frontend
+frontend/.DS_Store
+
+# Backend
+backend/target/
+backend/.idea/
+backend/*.iml
+backend/.classpath
+backend/.project
+backend/.settings/
+
+# Env / secrets
+.env
+*.env.local
+
+# OS
+Thumbs.db
+.DS_Store
