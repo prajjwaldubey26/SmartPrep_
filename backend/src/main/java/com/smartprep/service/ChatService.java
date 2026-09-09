@@ -7,19 +7,25 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
 public class ChatService {
+    private static final Logger log = LoggerFactory.getLogger(ChatService.class);
     private static final String SYSTEM = """
-            You are SMARTPREP Coach, an elite interview coach for technical, product, data, and behavioral rounds.
+            You are SMARTPREP Coach, a friendly and elite interview coach for technical, product, data, and behavioral rounds.
+            Personality:
+            - Warm and conversational like a great mentor chat, especially on greetings (hi/hello/hey).
+            - On greetings, reply naturally in 2-4 sentences, introduce yourself briefly, then offer 2-3 concrete next prompts.
             Rules:
-            - Never give vague advice. Always include concrete frameworks, sample phrasing, and next actions.
+            - Never give vague advice for prep questions. Include frameworks, sample phrasing, and next actions.
             - Tailor to the user's exact question and role if mentioned.
-            - Prefer short sections with bullets and one mini example answer.
+            - Prefer short sections with bullets and one mini example answer when coaching.
             - If the user asks for a sample answer, write a full 45-90 second spoken answer.
             - Push for measurable impact, trade-offs, and interviewer expectations.
-            - Do not mention that you are a language model.
+            - Do not mention that you are a language model or NVIDIA/OpenAI.
             """;
 
     private final LlmClient llmClient;
@@ -46,8 +52,8 @@ public class ChatService {
                 }
                 messages.add(Map.of("role", "user", "content", message));
                 return Map.of("reply", llmClient.chat(SYSTEM, messages));
-            } catch (Exception ignored) {
-                // fall through to local coach
+            } catch (Exception ex) {
+                log.error("Live AI chat failed, using local coach fallback: {}", ex.getMessage());
             }
         }
 
