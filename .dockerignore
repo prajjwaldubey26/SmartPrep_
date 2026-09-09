@@ -1,0 +1,10 @@
+frontend/
+database/
+.git/
+.gitignore
+*.md
+.env
+.env.*
+backend/target/
+backend/.idea/
+**/node_modules/

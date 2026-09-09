@@ -40,6 +40,19 @@ npx --yes serve -p 5500
 
 Set API URL in `frontend/js/config.js` if needed.
 
+## Deploy on Render (Docker)
+
+Render has no native Java runtime in some accounts — use **Docker**.
+
+1. Language / Runtime: **Docker**
+2. Root Directory: leave empty (uses root `Dockerfile`)  
+   **or** set Root Directory to `backend` (uses `backend/Dockerfile`)
+3. Dockerfile Path: `Dockerfile`
+4. Add env vars (`NVIDIA_API_KEY`, `SMARTPREP_AI_ENABLED=true`, etc.)
+5. Deploy
+
+Health check: `https://YOUR-SERVICE.onrender.com/api/health`
+
 ## NVIDIA AI on Render
 
 Set these **Environment Variables** on your Render backend service:
