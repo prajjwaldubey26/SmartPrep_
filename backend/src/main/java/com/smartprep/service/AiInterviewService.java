@@ -1,46 +1,131 @@
 package com.smartprep.service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AiInterviewService {
     private static final int QUESTIONS_PER_SESSION = 5;
 
+    /** Large fallback banks so offline mode still feels varied. */
     private static final Map<String, List<String>> BANK = Map.of(
             "Software Engineer", List.of(
                     "Explain how you would design a URL shortener. What trade-offs matter most at read-heavy scale?",
                     "Walk me through hashing collisions and when you'd choose chaining vs open addressing.",
                     "Describe a production bug you debugged end-to-end. What signals proved the root cause?",
                     "How do you design a testable API endpoint including contracts, failure modes, and observability?",
-                    "Compare REST vs event-driven design for a notification system. When is each the wrong choice?"),
+                    "Compare REST vs event-driven design for a notification system. When is each the wrong choice?",
+                    "How would you diagnose intermittent 502 errors behind an API gateway?",
+                    "Design idempotent payment retries without double-charging customers.",
+                    "When would you choose a relational DB over a document store for an orders service?",
+                    "Explain how you'd add feature flags safely to a high-traffic Java service.",
+                    "Walk through implementing rate limiting for a public REST API.",
+                    "How do you structure logging and tracing so on-call can debug in under 5 minutes?",
+                    "Describe a memory leak you found. What tooling and metrics confirmed it?",
+                    "How would you migrate a monolith endpoint to a new service with zero downtime?",
+                    "Compare optimistic vs pessimistic locking for seat booking.",
+                    "Design a background job system that survives worker crashes."),
             "Data Analyst", List.of(
                     "Define a north-star metric for an interview-prep product and explain leading indicators.",
                     "Explain correlation vs causation with a product example and how you'd validate causality.",
                     "A funnel drops between step 2 and 3. Walk me through your investigation order.",
                     "Explain cohort retention analysis: formula, pitfalls, and how you'd present it.",
-                    "How do you communicate uncertain findings to executives without overclaiming?"),
+                    "How do you communicate uncertain findings to executives without overclaiming?",
+                    "Design an A/B test for a new onboarding checklist. What do you watch for?",
+                    "How would you detect seasonality vs true product decline in weekly active users?",
+                    "Write the logic for a SQL query that finds users who started but never finished a mock.",
+                    "How do you choose between mean, median, and percentile for latency reporting?",
+                    "Explain survivorship bias in interview-prep completion data."),
             "Product Manager", List.of(
                     "Prioritize the next quarter for SMARTPREP. What do you cut and why?",
                     "Tell me about saying no to a stakeholder. What decision framework did you use?",
                     "Design onboarding for first-time mock interview users. What is the activation moment?",
                     "How would you measure whether AI feedback quality is actually improving outcomes?",
-                    "What risks come with adaptive questioning, and how would you mitigate them?"),
+                    "What risks come with adaptive questioning, and how would you mitigate them?",
+                    "Should SMARTPREP ship voice interviews before better scoring explainability? Decide.",
+                    "How would you price a freemium vs paid coaching tier?",
+                    "A key metric drops after a release. How do you decide ship/revert/hold?",
+                    "Define the MVP for company-specific interview packs.",
+                    "How do you balance candidate anxiety with rigorous scoring in the product?"),
             "System Design", List.of(
                     "Design a real-time interview session service for 100k concurrent users. Where are the bottlenecks?",
                     "How would you store and query interview transcripts efficiently for search and replay?",
                     "Design a rate-limited AI evaluation pipeline with strict cost controls.",
                     "Where would you place caching in an interview analytics dashboard and why?",
-                    "How do you keep the product reliable if the AI provider is down for 30 minutes?"),
+                    "How do you keep the product reliable if the AI provider is down for 30 minutes?",
+                    "Design a WebSocket fan-out for live coach feedback to mobile and web clients.",
+                    "How would you shard session data for multi-region failover?",
+                    "Design an upload pipeline for resume PDFs with virus scanning and OCR.",
+                    "How do you prevent abuse of free-tier interview minutes at scale?",
+                    "Design a notification system for score reports with email and in-app delivery."),
             "HR / Behavioral", List.of(
                     "Tell me about a conflict on a team and how you resolved it without escalating early.",
                     "Describe a failure that changed how you collaborate. What systems did you put in place?",
                     "How do you operate when requirements are incomplete and the deadline is fixed?",
                     "Give an example of receiving hard feedback and the behavior you changed afterward.",
-                    "Why this role, and why now? Connect your evidence to the job's top outcomes.")
+                    "Why this role, and why now? Connect your evidence to the job's top outcomes.",
+                    "Tell me about mentoring someone who was struggling. What changed for them?",
+                    "Describe a time you disagreed with your manager and how you handled it.",
+                    "How do you prioritize when everything is marked urgent?",
+                    "Share a time you improved a process that others had accepted as 'just how it is'.",
+                    "Tell me about delivering bad news to a stakeholder.")
+    );
+
+    private static final Map<String, List<String>> ANGLES = Map.of(
+            "Software Engineer", List.of(
+                    "debugging production incidents",
+                    "API design and contracts",
+                    "data structures trade-offs",
+                    "concurrency and race conditions",
+                    "testing strategy",
+                    "performance and latency",
+                    "security basics for backend services",
+                    "CI/CD and safe rollouts",
+                    "caching and invalidation",
+                    "database indexing and query plans",
+                    "idempotency and retries",
+                    "observability (logs, metrics, traces)",
+                    "refactoring legacy code",
+                    "object-oriented design",
+                    "message queues and async workflows"),
+            "Data Analyst", List.of(
+                    "experiment design",
+                    "SQL problem solving",
+                    "funnel diagnosis",
+                    "metric definition",
+                    "data quality issues",
+                    "dashboard storytelling",
+                    "cohort analysis",
+                    "forecasting caveats"),
+            "Product Manager", List.of(
+                    "prioritization frameworks",
+                    "user research synthesis",
+                    "go-to-market trade-offs",
+                    "success metrics",
+                    "stakeholder management",
+                    "MVP scoping",
+                    "risk and compliance"),
+            "System Design", List.of(
+                    "high availability",
+                    "data consistency",
+                    "caching layers",
+                    "queue-based decoupling",
+                    "multi-tenant isolation",
+                    "cost control at scale",
+                    "realtime collaboration"),
+            "HR / Behavioral", List.of(
+                    "ownership under ambiguity",
+                    "conflict resolution",
+                    "learning from failure",
+                    "cross-team influence",
+                    "giving and receiving feedback",
+                    "leadership without authority")
     );
 
     private final LlmClient llmClient;
@@ -53,42 +138,64 @@ public class AiInterviewService {
         return QUESTIONS_PER_SESSION;
     }
 
-    public String generateQuestion(String role, String difficulty, int orderNo, String previousAnswer) {
-        List<String> questions = BANK.getOrDefault(role, BANK.get("Software Engineer"));
-        String base = questions.get(Math.min(Math.max(orderNo - 1, 0), questions.size() - 1));
+    public String generateQuestion(
+            String role,
+            String difficulty,
+            int orderNo,
+            String previousAnswer,
+            List<String> avoidQuestions) {
+        List<String> avoid = avoidQuestions == null ? List.of() : avoidQuestions.stream()
+                .filter(q -> q != null && !q.isBlank())
+                .map(String::trim)
+                .distinct()
+                .limit(40)
+                .toList();
+
+        String angle = pickAngle(role);
+        String avoidBlock = avoid.isEmpty()
+                ? "(none yet)"
+                : avoid.stream().map(q -> "- " + q).collect(Collectors.joining("\n"));
 
         if (llmClient.isEnabled()) {
             try {
-                String system = "You are a strict interview question generator for SMARTPREP. "
-                        + "Return ONE interview question only. No preamble. Make it specific to role and difficulty. "
-                        + "If previous answer is weak/vague, ask a sharper follow-up on the same topic.";
-                String user = "Role: " + role + "\nDifficulty: " + difficulty + "\nQuestion number: " + orderNo
-                        + "\nSeed topic: " + base
-                        + "\nPrevious answer: " + (previousAnswer == null ? "(none)" : previousAnswer);
-                return llmClient.chat(system, List.of(Map.of("role", "user", "content", user)));
+                String system = """
+                        You are an expert technical interviewer for SMARTPREP.
+                        Generate ONE fresh, realistic interview question that a real hiring manager would ask.
+                        Rules:
+                        - Return ONLY the question text. No numbering, labels, markdown, or preamble.
+                        - Do NOT reuse or lightly rephrase any question in the avoid list.
+                        - Make it specific to the role, difficulty, and suggested angle.
+                        - Prefer concrete scenarios over generic textbook prompts.
+                        - If the previous answer was weak, ask a sharper follow-up on a NEW facet of the same skill area — still unique wording.
+                        """;
+                String user = "Role: " + role
+                        + "\nDifficulty: " + difficulty
+                        + "\nQuestion number in session: " + orderNo + " of " + QUESTIONS_PER_SESSION
+                        + "\nSuggested angle: " + angle
+                        + "\nSession seed: " + ThreadLocalRandom.current().nextInt(100000, 999999)
+                        + "\nPrevious answer: " + (previousAnswer == null || previousAnswer.isBlank() ? "(none)" : previousAnswer)
+                        + "\nAvoid repeating these questions:\n" + avoidBlock;
+                String generated = llmClient.chat(system, List.of(Map.of("role", "user", "content", user)), 0.95);
+                String cleaned = cleanQuestion(generated);
+                if (!cleaned.isBlank() && !isTooSimilar(cleaned, avoid)) {
+                    return cleaned;
+                }
             } catch (Exception ignored) {
                 // fallback below
             }
         }
 
-        String intensity = switch (difficulty.toUpperCase(Locale.ROOT)) {
-            case "EASY" -> "Give a practical answer with one concrete example.";
-            case "HARD" -> "Push into trade-offs, failure modes, and measurable impact.";
-            default -> "Balance structure, technical depth, and a clear close.";
-        };
+        return fallbackQuestion(role, difficulty, orderNo, previousAnswer, avoid, angle);
+    }
 
-        if (previousAnswer != null) {
-            String prev = previousAnswer.toLowerCase(Locale.ROOT);
-            if (prev.length() < 80 || containsAny(prev, "not sure", "idk", "don't know", "dont know")) {
-                return "Follow-up: Your previous answer was too thin. " + base
-                        + " Start with your approach in one sentence, then give one example. " + intensity;
-            }
-            if (!containsAny(prev, "because", "trade", "result", "impact", "example", "metric", "%")) {
-                return "Follow-up on depth: " + base
-                        + " This time include one trade-off and one measurable result. " + intensity;
-            }
+    public String upgradePlan(String role, double averageScore) {
+        if (averageScore >= 8) {
+            return "Advance to harder " + role + " mocks and pressure-test trade-offs. Drill one weak follow-up style daily: 'why this over the alternative?'";
         }
-        return base + " " + intensity;
+        if (averageScore >= 5) {
+            return "For " + role + ", enforce structure every answer (Approach -> Example -> Trade-off -> Result). Re-run only the lowest-scoring question type for 3 days.";
+        }
+        return "Reset fundamentals for " + role + ": 8-minute outline drills (no full speeches). Every answer must include ownership + one number before you increase difficulty.";
     }
 
     public EvaluationResult evaluate(String question, String answer, String difficulty) {
@@ -119,14 +226,87 @@ public class AiInterviewService {
         return evaluateLocal(question, answer, difficulty);
     }
 
-    public String upgradePlan(String role, double averageScore) {
-        if (averageScore >= 8) {
-            return "Advance to harder " + role + " mocks and pressure-test trade-offs. Drill one weak follow-up style daily: 'why this over the alternative?'";
+    private String fallbackQuestion(
+            String role,
+            String difficulty,
+            int orderNo,
+            String previousAnswer,
+            List<String> avoid,
+            String angle) {
+        List<String> bank = new ArrayList<>(BANK.getOrDefault(role, BANK.get("Software Engineer")));
+        Collections.shuffle(bank, ThreadLocalRandom.current());
+
+        String chosen = bank.stream()
+                .filter(q -> !isTooSimilar(q, avoid))
+                .findFirst()
+                .orElseGet(() -> bank.get(ThreadLocalRandom.current().nextInt(bank.size())));
+
+        String intensity = switch (difficulty.toUpperCase(Locale.ROOT)) {
+            case "EASY" -> "Keep it practical and include one concrete example.";
+            case "HARD" -> "Push into trade-offs, failure modes, and measurable impact.";
+            default -> "Balance structure, technical depth, and a clear close.";
+        };
+
+        if (previousAnswer != null) {
+            String prev = previousAnswer.toLowerCase(Locale.ROOT);
+            if (prev.length() < 80 || containsAny(prev, "not sure", "idk", "don't know", "dont know")) {
+                return "Follow-up on " + angle + ": " + chosen
+                        + " Start with your approach in one sentence, then give one example. " + intensity;
+            }
         }
-        if (averageScore >= 5) {
-            return "For " + role + ", enforce structure every answer (Approach -> Example -> Trade-off -> Result). Re-run only the lowest-scoring question type for 3 days.";
+        return chosen + " Focus on " + angle + ". " + intensity;
+    }
+
+    private String pickAngle(String role) {
+        List<String> angles = ANGLES.getOrDefault(role, ANGLES.get("Software Engineer"));
+        return angles.get(ThreadLocalRandom.current().nextInt(angles.size()));
+    }
+
+    private String cleanQuestion(String raw) {
+        if (raw == null) return "";
+        String cleaned = raw.trim()
+                .replaceAll("^[\"']+|[\"']+$", "")
+                .replaceAll("(?i)^question\\s*\\d*\\s*[:.\\-]\\s*", "")
+                .replaceAll("^#+\\s*", "");
+        int newline = cleaned.indexOf('\n');
+        if (newline > 40) {
+            cleaned = cleaned.substring(0, newline).trim();
         }
-        return "Reset fundamentals for " + role + ": 8-minute outline drills (no full speeches). Every answer must include ownership + one number before you increase difficulty.";
+        return cleaned;
+    }
+
+    private boolean isTooSimilar(String candidate, List<String> avoid) {
+        String norm = normalize(candidate);
+        for (String prior : avoid) {
+            String p = normalize(prior);
+            if (p.isBlank()) continue;
+            if (norm.equals(p)) return true;
+            if (norm.contains(p) || p.contains(norm)) return true;
+            if (tokenOverlap(norm, p) >= 0.72) return true;
+        }
+        return false;
+    }
+
+    private double tokenOverlap(String a, String b) {
+        String[] left = a.split("\\s+");
+        String[] right = b.split("\\s+");
+        if (left.length == 0 || right.length == 0) return 0;
+        java.util.Set<String> setB = new java.util.HashSet<>();
+        Collections.addAll(setB, right);
+        int hits = 0;
+        for (String token : left) {
+            if (token.length() < 4) continue;
+            if (setB.contains(token)) hits++;
+        }
+        int meaningful = 0;
+        for (String token : left) {
+            if (token.length() >= 4) meaningful++;
+        }
+        return meaningful == 0 ? 0 : (double) hits / meaningful;
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9\\s]", " ").replaceAll("\\s+", " ").trim();
     }
 
     private EvaluationResult evaluateLocal(String question, String answer, String difficulty) {

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dashboard — SMARTPREP</title>
+    <title>Past Sessions — SMARTPREP</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -27,58 +27,52 @@
             SMARTPREP
           </a>
           <ul class="nav-links">
-            <li><a class="active" href="dashboard.html">Dashboard</a></li>
+            <li><a href="dashboard.html">Dashboard</a></li>
             <li><a href="interview.html">Interview</a></li>
-            <li><a href="sessions.html">Sessions</a></li>
+            <li><a class="active" href="sessions.html">Sessions</a></li>
             <li><a href="chatbot.html">Coach</a></li>
             <li><a href="results.html">Results</a></li>
           </ul>
-          <button class="pill pill-light" type="button" id="logoutBtn">
-            <span class="pill-dot">×</span>
-            Logout
-          </button>
+          <a class="pill" href="interview.html">
+            <span class="pill-dot">+</span>
+            New mock
+          </a>
         </nav>
 
         <main class="app-main">
-          <div class="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <h1 class="page-title" id="welcomeTitle">Your practice studio</h1>
-              <p class="page-sub">Track progress, spot weak areas, and start the next adaptive mock.</p>
-            </div>
-            <a class="pill" href="interview.html">
-              <span class="pill-dot">+</span>
-              Begin Interview
-            </a>
-          </div>
+          <h1 class="page-title">Past sessions</h1>
+          <p class="page-sub" id="sessionsSub">
+            Click any session to open its full report — questions, your answers, and coaching.
+          </p>
 
-          <div class="grid-3">
+          <div class="grid-3" style="margin-bottom: 22px">
             <div class="stat">
-              <div class="stat-label">Sessions</div>
-              <div class="stat-value" id="statSessions">0</div>
+              <div class="stat-label">Total sessions</div>
+              <div class="stat-value" id="sessionsTotal">0</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Completed</div>
+              <div class="stat-value" id="sessionsCompleted">0</div>
             </div>
             <div class="stat">
               <div class="stat-label">Avg score</div>
-              <div class="stat-value" id="statScore">—</div>
-            </div>
-            <div class="stat">
-              <div class="stat-label">Focus area</div>
-              <div class="stat-value" id="statFocus" style="font-size: 1.35rem">—</div>
+              <div class="stat-value" id="sessionsAvg">—</div>
             </div>
           </div>
 
           <section class="section">
             <div class="section-head">
-              <h2>Recent sessions</h2>
-              <a class="muted-link" href="sessions.html">View all →</a>
+              <h2>All history</h2>
             </div>
-            <div class="list" id="historyList">
+            <div class="list" id="sessionsList">
               <div class="list-item">
                 <div>
-                  <h3>No sessions yet</h3>
-                  <p>Start your first mock interview to see history here.</p>
+                  <h3>Loading sessions…</h3>
+                  <p>Fetching your interview history.</p>
                 </div>
               </div>
             </div>
+            <p class="error-text hidden" id="sessionsError"></p>
           </section>
         </main>
       </div>
@@ -87,6 +81,6 @@
     <script src="js/config.js"></script>
     <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
-    <script src="js/dashboard.js"></script>
+    <script src="js/sessions.js"></script>
   </body>
 </html>

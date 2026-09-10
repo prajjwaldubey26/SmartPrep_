@@ -54,6 +54,10 @@ public class LlmClient {
     }
 
     public String chat(String systemPrompt, List<Map<String, String>> messages) {
+        return chat(systemPrompt, messages, 0.6);
+    }
+
+    public String chat(String systemPrompt, List<Map<String, String>> messages, double temperature) {
         if (!enabled) {
             throw new IllegalStateException("LLM disabled");
         }
@@ -66,8 +70,8 @@ public class LlmClient {
 
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("model", model);
-            body.put("temperature", 0.6);
-            body.put("top_p", 0.9);
+            body.put("temperature", Math.max(0.0, Math.min(1.5, temperature)));
+            body.put("top_p", 0.95);
             body.put("max_tokens", maxTokens);
             body.put("stream", false);
             body.put("messages", payloadMessages);

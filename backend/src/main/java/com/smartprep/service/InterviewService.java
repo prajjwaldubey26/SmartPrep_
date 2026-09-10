@@ -176,13 +176,38 @@ public class InterviewService {
     }
 
     private Question createQuestion(InterviewSession session, int orderNo, String previousAnswer) {
+        List<String> avoid = collectAvoidQuestions(session);
         Question question = new Question();
         question.setSessionId(session.getId());
         question.setOrderNo(orderNo);
         question.setCategory(session.getRole());
         question.setQuestionText(aiInterviewService.generateQuestion(
-                session.getRole(), session.getDifficulty(), orderNo, previousAnswer));
+                session.getRole(), session.getDifficulty(), orderNo, previousAnswer, avoid));
         return questionRepository.save(question);
+    }
+
+    private List<String> collectAvoidQuestions(InterviewSession session) {
+        List<String> avoid = new ArrayList<>();
+        for (Question q : questionRepository.findBySessionIdOrderByOrderNoAsc(session.getId())) {
+            if (q.getQuestionText() != null && !q.getQuestionText().isBlank()) {
+                avoid.add(q.getQuestionText());
+            }
+        }
+
+        List<InterviewSession> recent = sessionRepository.findByUserIdOrderByStartedAtDesc(session.getUserId());
+        int counted = 0;
+        for (InterviewSession prior : recent) {
+            if (prior.getId().equals(session.getId())) continue;
+            if (!session.getRole().equalsIgnoreCase(prior.getRole())) continue;
+            for (Question q : questionRepository.findBySessionIdOrderByOrderNoAsc(prior.getId())) {
+                if (q.getQuestionText() != null && !q.getQuestionText().isBlank()) {
+                    avoid.add(q.getQuestionText());
+                }
+            }
+            counted++;
+            if (counted >= 6) break;
+        }
+        return avoid;
     }
 
     private void finalizeSession(InterviewSession session) {

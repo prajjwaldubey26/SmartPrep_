@@ -47,6 +47,30 @@ public class DashboardService {
         summary.put("averageScore", sessions.isEmpty() ? null : average);
         summary.put("focusArea", user.getTargetRole());
         summary.put("recentSessions", recent);
+        summary.put("sessionsPage", "/sessions.html");
         return summary;
+    }
+
+    public Map<String, Object> sessions(Long userId) {
+        userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        List<InterviewSession> sessions = sessionRepository.findByUserIdOrderByStartedAtDesc(userId);
+        List<Map<String, Object>> rows = sessions.stream().map(s -> {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("id", s.getId());
+            row.put("role", s.getRole());
+            row.put("difficulty", s.getDifficulty());
+            row.put("status", s.getStatus());
+            row.put("averageScore", s.getAverageScore());
+            row.put("startedAt", s.getStartedAt());
+            row.put("endedAt", s.getEndedAt());
+            return row;
+        }).toList();
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("totalSessions", rows.size());
+        body.put("sessions", rows);
+        return body;
     }
 }

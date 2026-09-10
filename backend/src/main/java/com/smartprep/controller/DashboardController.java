@@ -21,4 +21,10 @@ public class DashboardController {
         Long userId = (Long) auth.getPrincipal();
         return dashboardService.summary(userId);
     }
+
+    @GetMapping("/sessions")
+    public Map<String, Object> sessions(Authentication auth) {
+        Long userId = (Long) auth.getPrincipal();
+        return dashboardService.sessions(userId);
+    }
 }
