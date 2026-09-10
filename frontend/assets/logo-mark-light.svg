@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 148" fill="none" role="img" aria-label="SMARTPREP">
+  <!-- Light-surface variant for app panel headers -->
+  <path
+    d="M64 118 L22 34 C19.5 28.5 23.5 22 30 22 H98 C104.5 22 108.5 28.5 106 34 L64 118 Z"
+    stroke="#111111"
+    stroke-width="9"
+    stroke-linejoin="round"
+    fill="none"
+  />
+  <circle cx="64" cy="48" r="14" fill="#111111"/>
+  <path d="M40 92 L58 112 L52 124 L28 100 Z" fill="#222222"/>
+  <path d="M88 92 L70 112 L76 124 L100 100 Z" fill="#333333"/>
+  <path d="M64 90 L70 98 L64 132 L58 98 Z" fill="#0F766E"/>
+  <path d="M58 90 H70 L67 96 H61 Z" fill="#EA580C"/>
+  <path d="M96 18 L110 46 L102 44 L108 58 L102 60 L96 46 L88 52 Z" fill="#0F766E"/>
+  <path d="M112 14 L118 10" stroke="#0F766E" stroke-width="3" stroke-linecap="round"/>
+  <path d="M116 22 L124 22" stroke="#0F766E" stroke-width="3" stroke-linecap="round"/>
+  <path d="M112 30 L118 34" stroke="#0F766E" stroke-width="3" stroke-linecap="round"/>
+</svg>

@@ -127,6 +127,39 @@ body {
   padding: 22px 20px 0;
 }
 
+.studio-brand {
+  position: absolute;
+  left: 22px;
+  top: 28px;
+  z-index: 7;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  font-size: 0.95rem;
+}
+.studio-brand img {
+  width: 34px;
+  height: 40px;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.35));
+}
+
+@media (max-width: 720px) {
+  .studio-brand span {
+    display: none;
+  }
+  .studio-brand {
+    left: 14px;
+    top: 26px;
+  }
+}
+
 .glass-dock {
   display: flex;
   gap: 8px;
@@ -720,15 +753,19 @@ body:not(.studio-body) {
 }
 
 .brand-mark {
-  width: 22px;
-  height: 22px;
+  width: 28px;
+  height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
-.brand-mark svg {
-  width: 22px;
-  height: 22px;
+.brand-mark svg,
+.brand-mark img {
+  width: 28px;
+  height: 32px;
+  display: block;
+  object-fit: contain;
 }
 
 .nav-links {
