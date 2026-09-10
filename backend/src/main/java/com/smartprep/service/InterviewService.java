@@ -78,17 +78,28 @@ public class InterviewService {
         evaluation.setFeedback(result.feedback());
         evaluation.setStrengths(result.strengths());
         evaluation.setImprovements(result.improvements());
+        evaluation.setVerdict(result.verdict());
+        evaluation.setWhyRight(result.whyRight());
+        evaluation.setWhyWrong(result.whyWrong());
+        evaluation.setBetterAnswer(result.betterAnswer());
+        evaluation.setSpokenFeedback(result.spokenFeedback());
         evaluationRepository.save(evaluation);
 
         long answeredCount = questionRepository.countBySessionId(sessionId);
         boolean completed = answeredCount >= aiInterviewService.questionsPerSession();
 
         Map<String, Object> response = new LinkedHashMap<>();
-        response.put("evaluation", Map.of(
-                "score", evaluation.getScore(),
-                "feedback", evaluation.getFeedback(),
-                "strengths", evaluation.getStrengths(),
-                "improvements", evaluation.getImprovements()));
+        Map<String, Object> evaluationMap = new LinkedHashMap<>();
+        evaluationMap.put("score", evaluation.getScore());
+        evaluationMap.put("feedback", evaluation.getFeedback());
+        evaluationMap.put("strengths", evaluation.getStrengths());
+        evaluationMap.put("improvements", evaluation.getImprovements());
+        evaluationMap.put("verdict", evaluation.getVerdict());
+        evaluationMap.put("whyRight", evaluation.getWhyRight());
+        evaluationMap.put("whyWrong", evaluation.getWhyWrong());
+        evaluationMap.put("betterAnswer", evaluation.getBetterAnswer());
+        evaluationMap.put("spokenFeedback", evaluation.getSpokenFeedback());
+        response.put("evaluation", evaluationMap);
         response.put("completed", completed);
 
         if (completed) {
@@ -140,6 +151,10 @@ public class InterviewService {
             row.put("feedback", e != null ? e.getFeedback() : null);
             row.put("strengths", e != null ? e.getStrengths() : null);
             row.put("improvements", e != null ? e.getImprovements() : null);
+            row.put("verdict", e != null ? e.getVerdict() : null);
+            row.put("whyRight", e != null ? e.getWhyRight() : null);
+            row.put("whyWrong", e != null ? e.getWhyWrong() : null);
+            row.put("betterAnswer", e != null ? e.getBetterAnswer() : null);
             rows.add(row);
         }
 

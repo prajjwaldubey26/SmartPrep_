@@ -41,7 +41,9 @@
         <main class="app-main">
           <div id="setupView">
             <h1 class="page-title">Configure your mock</h1>
-            <p class="page-sub">Choose a role and intensity. SMARTPREP adapts as you answer.</p>
+            <p class="page-sub">
+              Voice-first interview room: the coach asks aloud, you answer by mic, then it explains what was right and wrong.
+            </p>
             <form class="form-card" id="startForm">
               <div class="form-group">
                 <label for="role">Interview role</label>
@@ -61,6 +63,11 @@
                   <option value="HARD">Hard</option>
                 </select>
               </div>
+              <label class="voice-opt-in">
+                <input type="checkbox" id="voiceEnabled" checked />
+                <span>Enable voice coach (speak questions + listen to answers)</span>
+              </label>
+              <p class="voice-provider-hint" id="voiceProviderHint">Preparing best available voice…</p>
               <div class="form-actions">
                 <button class="pill" type="submit">
                   <span class="pill-dot">▶</span>
@@ -75,7 +82,7 @@
             <div class="interview-layout">
               <section class="question-stage">
                 <div class="aura" aria-hidden="true"></div>
-                <div class="room-orb" aria-hidden="true"></div>
+                <div class="room-orb" id="roomOrb" aria-hidden="true"></div>
                 <div class="round-meta">
                   <span id="roundLabel">Question 1</span>
                   <span>•</span>
@@ -84,9 +91,29 @@
                   <span id="timerLabel">00:00</span>
                 </div>
                 <h2 class="question-text" id="questionText">Loading question…</h2>
+
+                <div class="voice-dock" id="voiceDock">
+                  <button class="voice-mic" type="button" id="micBtn" aria-pressed="false" title="Hold conversation with your mic">
+                    <span class="mic-rings" aria-hidden="true"></span>
+                    <span class="mic-icon" aria-hidden="true">🎙</span>
+                    <span class="mic-label" id="micLabel">Tap to speak</span>
+                  </button>
+                  <div class="voice-actions">
+                    <button class="pill pill-light" type="button" id="replayQuestionBtn">
+                      <span class="pill-dot">↻</span>
+                      Replay question
+                    </button>
+                    <button class="pill pill-light" type="button" id="stopVoiceBtn">
+                      <span class="pill-dot">■</span>
+                      Stop voice
+                    </button>
+                  </div>
+                  <p class="voice-live-line" id="voiceLiveLine">Coach is ready when you are.</p>
+                </div>
+
                 <div class="answer-box form-group">
-                  <label for="answer">Your answer</label>
-                  <textarea id="answer" placeholder="Speak your thinking clearly. Structure beats length."></textarea>
+                  <label for="answer">Your answer <span class="muted-inline">(voice fills this automatically)</span></label>
+                  <textarea id="answer" placeholder="Tap the mic and answer out loud — or type here."></textarea>
                 </div>
                 <div class="form-actions">
                   <button class="pill" type="button" id="submitAnswerBtn">
@@ -102,14 +129,33 @@
               </section>
 
               <aside class="side-panel">
-                <div class="block-label">Live evaluation</div>
-                <h3 class="block-title" style="font-size: 1.3rem">After each answer</h3>
+                <div class="block-label">Live coaching</div>
+                <h3 class="block-title" style="font-size: 1.3rem">Why right / why wrong</h3>
                 <p class="block-text" id="liveHint">
-                  Submit a response to receive score, strengths, and the next adaptive question.
+                  After each answer the coach scores you, explains what worked, what missed, and how a stronger answer sounds.
                 </p>
                 <div class="feedback-box hidden" id="feedbackBox">
+                  <div class="verdict-pill" id="feedbackVerdict">—</div>
                   <h3>Score: <span id="feedbackScore">—</span>/10</h3>
                   <p id="feedbackText"></p>
+                  <div class="teach-grid">
+                    <div>
+                      <h4>What was right</h4>
+                      <p id="feedbackWhyRight"></p>
+                    </div>
+                    <div>
+                      <h4>What was wrong</h4>
+                      <p id="feedbackWhyWrong"></p>
+                    </div>
+                  </div>
+                  <div class="better-answer">
+                    <h4>Stronger answer</h4>
+                    <p id="feedbackBetter"></p>
+                  </div>
+                  <button class="pill pill-light" type="button" id="replayFeedbackBtn">
+                    <span class="pill-dot">♪</span>
+                    Replay coaching
+                  </button>
                 </div>
               </aside>
             </div>
@@ -121,6 +167,7 @@
     <script src="js/config.js"></script>
     <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
+    <script src="js/voice.js"></script>
     <script src="js/interview.js"></script>
   </body>
 </html>

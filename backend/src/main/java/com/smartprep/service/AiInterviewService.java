@@ -95,12 +95,18 @@ public class AiInterviewService {
         if (llmClient.isEnabled()) {
             try {
                 String system = """
-                        You are a rigorous interview evaluator for SMARTPREP.
-                        Return exactly this format:
+                        You are a warm but rigorous interview coach for SMARTPREP.
+                        Teach the candidate: celebrate what was right, explain what was wrong, and show a better answer.
+                        Return exactly this format (one field per line, no markdown):
                         SCORE: <0-10 integer>
-                        STRENGTHS: <one sentence>
+                        VERDICT: <Correct | Partially correct | Incorrect>
+                        STRENGTHS: <one sentence on what they did well>
                         IMPROVEMENTS: <one concrete fix>
-                        FEEDBACK: <2-3 sentences referencing the candidate's actual content>
+                        WHY_RIGHT: <1-2 sentences: what was correct and why it matters>
+                        WHY_WRONG: <1-2 sentences: what was missing/wrong and why that hurts the answer>
+                        BETTER_ANSWER: <3-5 sentence outline of a stronger answer>
+                        FEEDBACK: <2-3 coaching sentences referencing their actual content>
+                        SPOKEN: <40-80 words, conversational spoken coaching. Use short sentences. Sound human, calm, and clear. Do not use bullet points, markdown, or labels.>
                         Be specific. Do not be generic.
                         """;
                 String user = "Difficulty: " + difficulty + "\nQuestion: " + question + "\nAnswer: " + answer;
@@ -161,7 +167,6 @@ public class AiInterviewService {
             gaps.add("Add one metric or observable outcome.");
         }
 
-        // Question-aware checks
         if (containsAny(q, "trade-off", "tradeoff", "compare", "vs")) {
             if (containsAny(lower, "trade", "versus", "instead", "however", "on the other")) {
                 score += 1;
@@ -204,12 +209,22 @@ public class AiInterviewService {
             improvementText = gaps.get(0) + " Also: " + gaps.get(1);
         }
 
+        String verdict = score >= 8 ? "Correct" : score >= 5 ? "Partially correct" : "Incorrect";
+        String whyRight = strengthText;
+        String whyWrong = improvementText;
+        String betterAnswer = "Start with your approach in one sentence, give one concrete example with a number, "
+                + "name one trade-off, then close with the result. That structure scores consistently higher.";
         String feedback = "On \"" + shorten(question, 70) + "\", your answer scored " + score
                 + "/10 based on ownership, structure, specificity, and fit to the ask. "
                 + (words > 0 ? ("Length ~" + words + " words. ") : "")
-                + "Strongest signal: " + strengthText + " Top fix: " + improvementText;
+                + "What worked: " + whyRight + " What to fix: " + whyWrong;
+        String spoken = "You scored " + score + " out of 10. "
+                + "What worked: " + whyRight + " "
+                + "What to fix: " + whyWrong + " "
+                + "Next time, lead with your approach, add one example with a number, then close with the result.";
 
-        return new EvaluationResult(score, feedback, strengthText, improvementText);
+        return new EvaluationResult(
+                score, feedback, strengthText, improvementText, verdict, whyRight, whyWrong, betterAnswer, spoken);
     }
 
     private EvaluationResult parseLlmEvaluation(String raw, String question, String answer, String difficulty) {
@@ -217,14 +232,42 @@ public class AiInterviewService {
         String strengths = extractLine(raw, "STRENGTHS");
         String improvements = extractLine(raw, "IMPROVEMENTS");
         String feedback = extractLine(raw, "FEEDBACK");
+        String verdict = extractLine(raw, "VERDICT");
+        String whyRight = extractLine(raw, "WHY_RIGHT");
+        String whyWrong = extractLine(raw, "WHY_WRONG");
+        String betterAnswer = extractMultiline(raw, "BETTER_ANSWER");
+        String spoken = extractMultiline(raw, "SPOKEN");
+
         if (score == null || feedback == null || feedback.isBlank()) {
             return evaluateLocal(question, answer, difficulty);
         }
+
+        EvaluationResult localFallback = null;
+        if (whyRight == null || whyRight.isBlank() || whyWrong == null || whyWrong.isBlank()) {
+            localFallback = evaluateLocal(question, answer, difficulty);
+        }
+
+        String safeStrengths = blank(strengths, "Solid attempt.");
+        String safeImprovements = blank(improvements, "Add one concrete example and a metric.");
+        String safeVerdict = blank(verdict, score >= 8 ? "Correct" : score >= 5 ? "Partially correct" : "Incorrect");
+        String safeWhyRight = blank(whyRight, localFallback != null ? localFallback.whyRight() : safeStrengths);
+        String safeWhyWrong = blank(whyWrong, localFallback != null ? localFallback.whyWrong() : safeImprovements);
+        String safeBetter = blank(betterAnswer, localFallback != null ? localFallback.betterAnswer()
+                : "Lead with approach, give one example with a metric, name a trade-off, then close with impact.");
+        String safeSpoken = blank(spoken,
+                "You scored " + score + " out of 10. What worked: " + safeWhyRight
+                        + " What to fix: " + safeWhyWrong + " Try the stronger outline next.");
+
         return new EvaluationResult(
                 Math.max(0, Math.min(10, score)),
                 feedback,
-                strengths == null || strengths.isBlank() ? "Solid attempt." : strengths,
-                improvements == null || improvements.isBlank() ? "Add one concrete example and a metric." : improvements);
+                safeStrengths,
+                safeImprovements,
+                safeVerdict,
+                safeWhyRight,
+                safeWhyWrong,
+                safeBetter,
+                safeSpoken);
     }
 
     private Integer extractInt(String raw, String key) {
@@ -249,6 +292,37 @@ public class AiInterviewService {
         return null;
     }
 
+    private String extractMultiline(String raw, String key) {
+        String[] lines = raw.split("\\R");
+        StringBuilder sb = new StringBuilder();
+        boolean capturing = false;
+        for (String line : lines) {
+            String t = line.trim();
+            String upper = t.toUpperCase(Locale.ROOT);
+            if (upper.startsWith(key)) {
+                capturing = true;
+                int idx = t.indexOf(':');
+                if (idx >= 0) sb.append(t.substring(idx + 1).trim());
+                continue;
+            }
+            if (capturing) {
+                if (upper.matches("^(SCORE|VERDICT|STRENGTHS|IMPROVEMENTS|WHY_RIGHT|WHY_WRONG|BETTER_ANSWER|FEEDBACK|SPOKEN)\\b.*")) {
+                    break;
+                }
+                if (!t.isBlank()) {
+                    if (sb.length() > 0) sb.append(' ');
+                    sb.append(t);
+                }
+            }
+        }
+        String value = sb.toString().trim();
+        return value.isBlank() ? null : value;
+    }
+
+    private String blank(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value.trim();
+    }
+
     private boolean containsAny(String text, String... words) {
         for (String word : words) {
             if (text.contains(word)) return true;
@@ -261,5 +335,14 @@ public class AiInterviewService {
         return value.length() <= max ? value : value.substring(0, max - 1) + "...";
     }
 
-    public record EvaluationResult(int score, String feedback, String strengths, String improvements) {}
+    public record EvaluationResult(
+            int score,
+            String feedback,
+            String strengths,
+            String improvements,
+            String verdict,
+            String whyRight,
+            String whyWrong,
+            String betterAnswer,
+            String spokenFeedback) {}
 }
