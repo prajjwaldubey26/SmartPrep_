@@ -1403,6 +1403,121 @@ a.session-row:hover {
   white-space: normal;
 }
 
+.chat-bubble-text.md-body {
+  white-space: normal;
+}
+
+.chat-bubble-text.md-body > *:first-child {
+  margin-top: 0;
+}
+
+.chat-bubble-text.md-body > *:last-child {
+  margin-bottom: 0;
+}
+
+.chat-bubble-text.md-body p {
+  margin: 0 0 0.7em;
+  line-height: 1.55;
+}
+
+.chat-bubble-text.md-body h1,
+.chat-bubble-text.md-body h2,
+.chat-bubble-text.md-body h3,
+.chat-bubble-text.md-body h4 {
+  margin: 0.85em 0 0.4em;
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: #fff;
+}
+
+.chat-bubble-text.md-body h1 { font-size: 1.15rem; }
+.chat-bubble-text.md-body h2 { font-size: 1.05rem; }
+.chat-bubble-text.md-body h3,
+.chat-bubble-text.md-body h4 { font-size: 0.95rem; }
+
+.chat-bubble-text.md-body ul,
+.chat-bubble-text.md-body ol {
+  margin: 0.35em 0 0.85em;
+  padding-left: 1.25em;
+}
+
+.chat-bubble-text.md-body li {
+  margin: 0.25em 0;
+  line-height: 1.5;
+}
+
+.chat-bubble-text.md-body strong {
+  font-weight: 600;
+  color: #fff;
+}
+
+.chat-bubble-text.md-body code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.84em;
+  padding: 0.12em 0.35em;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.chat-bubble-text.md-body pre {
+  margin: 0.6em 0 0.9em;
+  padding: 12px 14px;
+  border-radius: 12px;
+  overflow-x: auto;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.chat-bubble-text.md-body pre code {
+  padding: 0;
+  background: transparent;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.chat-bubble-text.md-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.7em 0 1em;
+  font-size: 0.84rem;
+  display: block;
+  overflow-x: auto;
+}
+
+.chat-bubble-text.md-body th,
+.chat-bubble-text.md-body td {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+  min-width: 7rem;
+}
+
+.chat-bubble-text.md-body th {
+  background: rgba(255, 255, 255, 0.06);
+  font-weight: 600;
+  color: #fff;
+}
+
+.chat-bubble-text.md-body blockquote {
+  margin: 0.6em 0;
+  padding: 0.4em 0 0.4em 0.9em;
+  border-left: 3px solid rgba(180, 205, 255, 0.45);
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.chat-bubble-text.md-body hr {
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  margin: 1em 0;
+}
+
+.chat-bubble-row.is-user .chat-bubble-text {
+  white-space: pre-wrap;
+}
+
 .chat-typing {
   display: inline-flex;
   gap: 6px;

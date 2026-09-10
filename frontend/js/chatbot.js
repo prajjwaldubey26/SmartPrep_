@@ -10,6 +10,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const errorBox = document.getElementById("chatError");
   const sendBtn = document.getElementById("sendBtn");
 
+  configureMarkdown();
+
   const history = loadHistory();
   if (!history.length) {
     appendMessage("assistant", SUGGESTED_OPENER, false);
@@ -74,12 +76,28 @@ document.addEventListener("DOMContentLoaded", () => {
   function appendMessage(role, content, persist) {
     const row = document.createElement("div");
     row.className = `chat-bubble-row ${role === "user" ? "is-user" : "is-bot"}`;
-    row.innerHTML = `
-      <div class="chat-bubble">
-        <div class="chat-bubble-role">${role === "user" ? "You" : "Coach"}</div>
-        <div class="chat-bubble-text">${escapeHtml(content)}</div>
-      </div>`;
+
+    const bubble = document.createElement("div");
+    bubble.className = "chat-bubble";
+
+    const roleEl = document.createElement("div");
+    roleEl.className = "chat-bubble-role";
+    roleEl.textContent = role === "user" ? "You" : "Coach";
+
+    const textEl = document.createElement("div");
+    textEl.className = "chat-bubble-text" + (role === "assistant" || role === "bot" ? " md-body" : "");
+
+    if (role === "user") {
+      textEl.textContent = content;
+    } else {
+      textEl.innerHTML = renderCoachMarkdown(content);
+    }
+
+    bubble.appendChild(roleEl);
+    bubble.appendChild(textEl);
+    row.appendChild(bubble);
     thread.appendChild(row);
+
     if (persist) {
       const next = loadHistory();
       next.push({ role, content });
@@ -126,13 +144,61 @@ document.addEventListener("DOMContentLoaded", () => {
   function saveHistory(items) {
     localStorage.setItem("smartprep_chat", JSON.stringify(items.slice(-40)));
   }
-
-  function escapeHtml(value) {
-    return String(value || "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("\n", "<br>");
-  }
 });
+
+function configureMarkdown() {
+  if (typeof marked === "undefined") return;
+  marked.setOptions({
+    gfm: true,
+    breaks: true,
+    headerIds: false,
+    mangle: false,
+  });
+}
+
+function renderCoachMarkdown(raw) {
+  const cleaned = normalizeCoachText(raw);
+  if (typeof marked !== "undefined") {
+    const html = marked.parse(cleaned);
+    if (typeof DOMPurify !== "undefined") {
+      return DOMPurify.sanitize(html, {
+        USE_PROFILES: { html: true },
+      });
+    }
+    return html;
+  }
+  return fallbackFormat(cleaned);
+}
+
+function normalizeCoachText(raw) {
+  let text = String(raw || "").replace(/\r\n/g, "\n").trim();
+  // Models sometimes emit literal <br> — convert to markdown newlines
+  text = text.replace(/<br\s*\/?>/gi, "\n");
+  text = text.replace(/<\/?p>/gi, "\n");
+  text = text.replace(/<\/?(div|span)[^>]*>/gi, "");
+  // Collapse crazy whitespace inside table rows a bit
+  text = text.replace(/\n{4,}/g, "\n\n\n");
+  return text.trim();
+}
+
+function fallbackFormat(text) {
+  const escaped = escapeHtml(text);
+  return escaped
+    .replace(/^### (.+)$/gm, "<h3>$1</h3>")
+    .replace(/^## (.+)$/gm, "<h2>$1</h2>")
+    .replace(/^# (.+)$/gm, "<h2>$1</h2>")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/^\- (.+)$/gm, "<li>$1</li>")
+    .replace(/(<li>.*<\/li>\n?)+/g, (block) => `<ul>${block}</ul>`)
+    .replace(/\n\n/g, "</p><p>")
+    .replace(/\n/g, "<br>");
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
