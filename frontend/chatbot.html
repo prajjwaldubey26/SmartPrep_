@@ -57,51 +57,53 @@
           </nav>
         </header>
 
-        <main class="chat-layout">
-          <aside class="liquid-plate chat-side fade-up">
-            <p class="eyebrow">Interview coach</p>
-            <h1 class="chat-title">Ask. Practice. Refine.</h1>
-            <p class="chat-side-copy">
-              Your SMARTPREP coach helps with frameworks, answer structure, role prep, and weak-area drills — in the same studio language as your mocks.
-            </p>
-            <div class="chat-suggestions">
-              <button type="button" class="suggest-chip" data-prompt="How should I structure a behavioral answer using STAR?">STAR framework</button>
-              <button type="button" class="suggest-chip" data-prompt="Give me a system design checklist for a URL shortener interview.">System design checklist</button>
-              <button type="button" class="suggest-chip" data-prompt="What are common mistakes in coding interviews and how do I avoid them?">Coding pitfalls</button>
-              <button type="button" class="suggest-chip" data-prompt="Help me prepare for an HR round for a software engineer role.">HR prep</button>
-            </div>
-            <a class="cta-rim chat-side-cta" href="interview.html">
-              <span class="cta-icon" aria-hidden="true"><span></span><span></span><span></span></span>
-              Enter mock interview
-            </a>
+        <main class="gpt-shell">
+          <aside class="gpt-sidebar liquid-plate" aria-label="Chat history">
+            <button type="button" class="gpt-new-chat" id="newChatBtn">
+              <span class="gpt-new-plus" aria-hidden="true">+</span>
+              New chat
+            </button>
+            <p class="gpt-sidebar-label">Chat history</p>
+            <div class="gpt-history" id="chatHistoryList"></div>
           </aside>
 
-          <section class="liquid-plate chat-panel fade-up-delay">
-            <div class="chat-panel-head">
+          <section class="gpt-main liquid-plate">
+            <div class="gpt-main-top">
               <div class="chat-presence">
                 <span class="status-dot"></span>
-                Coach online
+                <span id="chatTitleLabel">SMARTPREP Coach</span>
               </div>
-              <button type="button" class="pill pill-light chat-clear" id="clearChatBtn">
-                <span class="pill-dot">×</span>
-                Clear
-              </button>
             </div>
 
-            <div class="chat-thread" id="chatThread" aria-live="polite"></div>
+            <div class="gpt-center">
+              <div class="chat-thread gpt-thread" id="chatThread" aria-live="polite"></div>
 
-            <form class="chat-composer" id="chatForm">
-              <textarea
-                id="chatInput"
-                rows="1"
-                placeholder="Ask about interviews, frameworks, or feedback…"
-                required
-              ></textarea>
-              <button class="cta-rim chat-send" type="submit" id="sendBtn">
-                Send
-              </button>
-            </form>
-            <p class="error-text chat-error hidden" id="chatError"></p>
+              <div class="gpt-empty hidden" id="emptyState">
+                <h1>What can I help with?</h1>
+                <p>Ask about STAR answers, system design, coding rounds, or feedback on your mock.</p>
+                <div class="gpt-starters">
+                  <button type="button" class="suggest-chip" data-prompt="How should I structure a behavioral answer using STAR?">STAR framework</button>
+                  <button type="button" class="suggest-chip" data-prompt="Give me a system design checklist for a URL shortener interview.">System design</button>
+                  <button type="button" class="suggest-chip" data-prompt="What are common mistakes in coding interviews and how do I avoid them?">Coding pitfalls</button>
+                  <button type="button" class="suggest-chip" data-prompt="Help me prepare for an HR round for a software engineer role.">HR prep</button>
+                </div>
+              </div>
+
+              <div class="gpt-composer-wrap">
+                <form class="chat-composer gpt-composer" id="chatForm">
+                  <textarea
+                    id="chatInput"
+                    rows="1"
+                    placeholder="Message SMARTPREP Coach…"
+                    required
+                  ></textarea>
+                  <button class="cta-rim chat-send" type="submit" id="sendBtn">
+                    Send
+                  </button>
+                </form>
+                <p class="error-text chat-error hidden" id="chatError"></p>
+              </div>
+            </div>
           </section>
         </main>
       </div>

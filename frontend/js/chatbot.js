@@ -1,5 +1,5 @@
-const SUGGESTED_OPENER =
-  "Hi — I'm your SMARTPREP interview coach. Ask me about STAR answers, system design, coding rounds, HR prep, or how to improve after a mock.";
+const STORE_KEY = "smartprep_chat_store_v2";
+const LEGACY_KEY = "smartprep_chat";
 
 document.addEventListener("DOMContentLoaded", () => {
   if (!Auth.requireAuth()) return;
@@ -9,29 +9,40 @@ document.addEventListener("DOMContentLoaded", () => {
   const input = document.getElementById("chatInput");
   const errorBox = document.getElementById("chatError");
   const sendBtn = document.getElementById("sendBtn");
+  const historyList = document.getElementById("chatHistoryList");
+  const emptyState = document.getElementById("emptyState");
+  const titleLabel = document.getElementById("chatTitleLabel");
 
   configureMarkdown();
 
-  const history = loadHistory();
-  if (!history.length) {
-    appendMessage("assistant", SUGGESTED_OPENER, false);
-  } else {
-    history.forEach((m) => appendMessage(m.role, m.content, false));
+  let store = loadStore();
+  if (!store.activeId || !store.conversations.find((c) => c.id === store.activeId)) {
+    const fresh = createConversation();
+    store.conversations.unshift(fresh);
+    store.activeId = fresh.id;
+    saveStore(store);
   }
-  scrollThread();
+
+  renderHistory();
+  renderActiveChat();
+
+  document.getElementById("newChatBtn").addEventListener("click", () => {
+    const fresh = createConversation();
+    store.conversations.unshift(fresh);
+    store.activeId = fresh.id;
+    saveStore(store);
+    renderHistory();
+    renderActiveChat();
+    input.focus();
+  });
 
   document.querySelectorAll(".suggest-chip").forEach((chip) => {
     chip.addEventListener("click", () => {
       input.value = chip.dataset.prompt || chip.textContent;
       input.focus();
       autoGrow();
+      form.requestSubmit();
     });
-  });
-
-  document.getElementById("clearChatBtn").addEventListener("click", () => {
-    localStorage.removeItem("smartprep_chat");
-    thread.innerHTML = "";
-    appendMessage("assistant", SUGGESTED_OPENER, true);
   });
 
   input.addEventListener("input", autoGrow);
@@ -48,21 +59,26 @@ document.addEventListener("DOMContentLoaded", () => {
     const message = input.value.trim();
     if (!message) return;
 
+    const chat = getActiveChat();
     appendMessage("user", message, true);
+    maybeSetTitle(chat, message);
     input.value = "";
     autoGrow();
+    updateEmptyState();
     setSending(true);
 
     const typing = appendTyping();
 
     try {
-      const payloadHistory = loadHistory().slice(-12);
+      const payloadHistory = chat.messages.slice(-12);
       const data = await Api.post("/chat", {
         message,
         history: payloadHistory,
       });
       typing.remove();
       appendMessage("assistant", data.reply || "Let's try that again with a clearer question.", true);
+      touchActive();
+      renderHistory();
     } catch (err) {
       typing.remove();
       errorBox.textContent = err.message || "Chat failed";
@@ -72,6 +88,43 @@ document.addEventListener("DOMContentLoaded", () => {
       input.focus();
     }
   });
+
+  function getActiveChat() {
+    return store.conversations.find((c) => c.id === store.activeId);
+  }
+
+  function renderActiveChat() {
+    const chat = getActiveChat();
+    thread.innerHTML = "";
+    titleLabel.textContent = chat?.title || "SMARTPREP Coach";
+    (chat?.messages || []).forEach((m) => appendMessage(m.role, m.content, false));
+    updateEmptyState();
+    scrollThread();
+  }
+
+  function renderHistory() {
+    historyList.innerHTML = "";
+    if (!store.conversations.length) {
+      historyList.innerHTML = `<p class="gpt-history-empty">No chats yet</p>`;
+      return;
+    }
+
+    store.conversations.forEach((chat) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "gpt-history-item" + (chat.id === store.activeId ? " is-active" : "");
+      btn.innerHTML = `
+        <span class="gpt-history-title">${escapeHtml(chat.title || "New chat")}</span>
+        <span class="gpt-history-meta">${escapeHtml(formatWhen(chat.updatedAt))}</span>`;
+      btn.addEventListener("click", () => {
+        store.activeId = chat.id;
+        saveStore(store);
+        renderHistory();
+        renderActiveChat();
+      });
+      historyList.appendChild(btn);
+    });
+  }
 
   function appendMessage(role, content, persist) {
     const row = document.createElement("div");
@@ -85,7 +138,7 @@ document.addEventListener("DOMContentLoaded", () => {
     roleEl.textContent = role === "user" ? "You" : "Coach";
 
     const textEl = document.createElement("div");
-    textEl.className = "chat-bubble-text" + (role === "assistant" || role === "bot" ? " md-body" : "");
+    textEl.className = "chat-bubble-text" + (role === "user" ? "" : " md-body");
 
     if (role === "user") {
       textEl.textContent = content;
@@ -99,9 +152,10 @@ document.addEventListener("DOMContentLoaded", () => {
     thread.appendChild(row);
 
     if (persist) {
-      const next = loadHistory();
-      next.push({ role, content });
-      saveHistory(next);
+      const chat = getActiveChat();
+      chat.messages.push({ role, content });
+      chat.updatedAt = Date.now();
+      saveStore(store);
     }
     scrollThread();
     return row;
@@ -119,6 +173,33 @@ document.addEventListener("DOMContentLoaded", () => {
     return row;
   }
 
+  function maybeSetTitle(chat, firstUserMessage) {
+    if (!chat || (chat.title && chat.title !== "New chat")) return;
+    chat.title = firstUserMessage.replace(/\s+/g, " ").trim().slice(0, 42);
+    if (firstUserMessage.length > 42) chat.title += "…";
+    titleLabel.textContent = chat.title;
+    saveStore(store);
+    renderHistory();
+  }
+
+  function touchActive() {
+    const chat = getActiveChat();
+    if (!chat) return;
+    chat.updatedAt = Date.now();
+    store.conversations = [
+      chat,
+      ...store.conversations.filter((c) => c.id !== chat.id),
+    ];
+    saveStore(store);
+  }
+
+  function updateEmptyState() {
+    const chat = getActiveChat();
+    const empty = !chat || !chat.messages.length;
+    emptyState.classList.toggle("hidden", !empty);
+    thread.classList.toggle("hidden", empty);
+  }
+
   function setSending(busy) {
     sendBtn.disabled = busy;
     input.disabled = busy;
@@ -126,25 +207,75 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function autoGrow() {
     input.style.height = "auto";
-    input.style.height = `${Math.min(input.scrollHeight, 140)}px`;
+    input.style.height = `${Math.min(input.scrollHeight, 160)}px`;
   }
 
   function scrollThread() {
     thread.scrollTop = thread.scrollHeight;
   }
-
-  function loadHistory() {
-    try {
-      return JSON.parse(localStorage.getItem("smartprep_chat") || "[]");
-    } catch {
-      return [];
-    }
-  }
-
-  function saveHistory(items) {
-    localStorage.setItem("smartprep_chat", JSON.stringify(items.slice(-40)));
-  }
 });
+
+function createConversation() {
+  return {
+    id: `c_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    title: "New chat",
+    updatedAt: Date.now(),
+    messages: [],
+  };
+}
+
+function loadStore() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.conversations)) return parsed;
+    }
+  } catch {
+    /* fall through */
+  }
+
+  // Migrate legacy single-thread history
+  try {
+    const legacy = JSON.parse(localStorage.getItem(LEGACY_KEY) || "[]");
+    if (Array.isArray(legacy) && legacy.length) {
+      const migrated = createConversation();
+      migrated.title = "Previous chat";
+      migrated.messages = legacy
+        .filter((m) => m && m.content)
+        .map((m) => ({
+          role: m.role === "assistant" ? "assistant" : "user",
+          content: m.content,
+        }));
+      const store = { conversations: [migrated], activeId: migrated.id };
+      saveStore(store);
+      return store;
+    }
+  } catch {
+    /* ignore */
+  }
+
+  return { conversations: [], activeId: null };
+}
+
+function saveStore(store) {
+  localStorage.setItem(
+    STORE_KEY,
+    JSON.stringify({
+      activeId: store.activeId,
+      conversations: store.conversations.slice(0, 40),
+    })
+  );
+}
+
+function formatWhen(ts) {
+  if (!ts) return "";
+  try {
+    return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  } catch {
+    return "";
+  }
+}
 
 function configureMarkdown() {
   if (typeof marked === "undefined") return;
@@ -172,11 +303,9 @@ function renderCoachMarkdown(raw) {
 
 function normalizeCoachText(raw) {
   let text = String(raw || "").replace(/\r\n/g, "\n").trim();
-  // Models sometimes emit literal <br> — convert to markdown newlines
   text = text.replace(/<br\s*\/?>/gi, "\n");
   text = text.replace(/<\/?p>/gi, "\n");
   text = text.replace(/<\/?(div|span)[^>]*>/gi, "");
-  // Collapse crazy whitespace inside table rows a bit
   text = text.replace(/\n{4,}/g, "\n\n\n");
   return text.trim();
 }
