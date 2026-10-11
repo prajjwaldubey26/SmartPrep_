@@ -1,5 +1,7 @@
 package com.smartprep.service;
 
+import com.smartprep.domain.InterviewDomain;
+import com.smartprep.domain.InterviewDomains;
 import com.smartprep.dto.StartInterviewRequest;
 import com.smartprep.dto.SubmitAnswerRequest;
 import com.smartprep.entity.*;
@@ -34,9 +36,11 @@ public class InterviewService {
 
     @Transactional
     public Map<String, Object> start(Long userId, StartInterviewRequest request) {
+        InterviewDomain domain = requireDomain(request.getDomainId());
         InterviewSession session = new InterviewSession();
         session.setUserId(userId);
-        session.setRole(request.getRole());
+        session.setRole(domain.name());
+        session.setDomainId(domain.id());
         session.setDifficulty(request.getDifficulty().toUpperCase(Locale.ROOT));
         session.setStatus("IN_PROGRESS");
         sessionRepository.save(session);
@@ -44,6 +48,7 @@ public class InterviewService {
         Question question = createQuestion(session, 1, null);
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("sessionId", session.getId());
+        response.put("domainId", session.getDomainId());
         response.put("role", session.getRole());
         response.put("difficulty", session.getDifficulty());
         response.put("question", toQuestionMap(question));
@@ -70,7 +75,7 @@ public class InterviewService {
         answerRepository.save(answer);
 
         AiInterviewService.EvaluationResult result = aiInterviewService.evaluate(
-                question.getQuestionText(), answer.getAnswerText(), session.getDifficulty());
+                domainOf(session), question.getQuestionText(), answer.getAnswerText(), session.getDifficulty());
 
         Evaluation evaluation = new Evaluation();
         evaluation.setAnswerId(answer.getId());
@@ -85,8 +90,7 @@ public class InterviewService {
         evaluation.setSpokenFeedback(result.spokenFeedback());
         evaluationRepository.save(evaluation);
 
-        long answeredCount = questionRepository.countBySessionId(sessionId);
-        boolean completed = answeredCount >= aiInterviewService.questionsPerSession();
+        boolean completed = question.getOrderNo() >= aiInterviewService.questionsPerSession();
 
         Map<String, Object> response = new LinkedHashMap<>();
         Map<String, Object> evaluationMap = new LinkedHashMap<>();
@@ -102,14 +106,38 @@ public class InterviewService {
         response.put("evaluation", evaluationMap);
         response.put("completed", completed);
 
+        response.put("nextQuestion", null);
         if (completed) {
             finalizeSession(session);
-            response.put("nextQuestion", null);
-        } else {
-            Question next = createQuestion(session, (int) answeredCount + 1, answer.getAnswerText());
-            response.put("nextQuestion", toQuestionMap(next));
         }
         return response;
+    }
+
+    @Transactional
+    public Map<String, Object> nextQuestion(Long userId, Long sessionId) {
+        InterviewSession session = requireOwnedSession(userId, sessionId);
+        if (!"IN_PROGRESS".equals(session.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Session is not active");
+        }
+
+        List<Question> questions = questionRepository.findBySessionIdOrderByOrderNoAsc(sessionId);
+        if (questions.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No question to continue from");
+        }
+
+        Question latest = questions.get(questions.size() - 1);
+        if (answerRepository.findByQuestionId(latest.getId()).isEmpty()) {
+            return questionResponse(latest);
+        }
+        if (latest.getOrderNo() >= aiInterviewService.questionsPerSession()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Interview is already complete");
+        }
+
+        String previousAnswer = answerRepository.findByQuestionId(latest.getId())
+                .map(Answer::getAnswerText)
+                .orElse(null);
+        Question next = createQuestion(session, latest.getOrderNo() + 1, previousAnswer);
+        return questionResponse(next);
     }
 
     @Transactional
@@ -164,6 +192,7 @@ public class InterviewService {
 
         Map<String, Object> report = new LinkedHashMap<>();
         report.put("sessionId", session.getId());
+        report.put("domainId", session.getDomainId());
         report.put("role", session.getRole());
         report.put("difficulty", session.getDifficulty());
         report.put("status", session.getStatus());
@@ -180,9 +209,10 @@ public class InterviewService {
         Question question = new Question();
         question.setSessionId(session.getId());
         question.setOrderNo(orderNo);
-        question.setCategory(session.getRole());
+        InterviewDomain domain = domainOf(session);
+        question.setCategory(domain.id());
         question.setQuestionText(aiInterviewService.generateQuestion(
-                session.getRole(), session.getDifficulty(), orderNo, previousAnswer, avoid));
+                domain, session.getDifficulty(), orderNo, previousAnswer, avoid));
         return questionRepository.save(question);
     }
 
@@ -198,7 +228,10 @@ public class InterviewService {
         int counted = 0;
         for (InterviewSession prior : recent) {
             if (prior.getId().equals(session.getId())) continue;
-            if (!session.getRole().equalsIgnoreCase(prior.getRole())) continue;
+            boolean sameTrack = session.getDomainId() != null
+                    ? session.getDomainId().equalsIgnoreCase(prior.getDomainId())
+                    : session.getRole().equalsIgnoreCase(prior.getRole());
+            if (!sameTrack) continue;
             for (Question q : questionRepository.findBySessionIdOrderByOrderNoAsc(prior.getId())) {
                 if (q.getQuestionText() != null && !q.getQuestionText().isBlank()) {
                     avoid.add(q.getQuestionText());
@@ -223,6 +256,23 @@ public class InterviewService {
         sessionRepository.save(session);
     }
 
+    private InterviewDomain requireDomain(String domainId) {
+        InterviewDomain domain = InterviewDomains.require(domainId);
+        if (domain == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Choose a valid interview domain");
+        }
+        return domain;
+    }
+
+    private InterviewDomain domainOf(InterviewSession session) {
+        InterviewDomain domain = InterviewDomains.require(session.getDomainId());
+        if (domain != null) return domain;
+        return InterviewDomains.all().stream()
+                .filter(item -> item.name().equalsIgnoreCase(session.getRole()))
+                .findFirst()
+                .orElseGet(() -> InterviewDomains.require("software-engineering"));
+    }
+
     private InterviewSession requireOwnedSession(Long userId, Long sessionId) {
         InterviewSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Session not found"));
@@ -230,6 +280,13 @@ public class InterviewService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not your session");
         }
         return session;
+    }
+
+    private Map<String, Object> questionResponse(Question question) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("question", toQuestionMap(question));
+        response.put("questionIndex", question.getOrderNo());
+        return response;
     }
 
     private Map<String, Object> toQuestionMap(Question question) {

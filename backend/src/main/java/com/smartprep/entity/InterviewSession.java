@@ -16,6 +16,9 @@ public class InterviewSession {
     @Column(nullable = false, length = 120)
     private String role;
 
+    @Column(name = "domain_id", length = 64)
+    private String domainId;
+
     @Column(nullable = false, length = 40)
     private String difficulty;
 
@@ -37,6 +40,8 @@ public class InterviewSession {
     public void setUserId(Long userId) { this.userId = userId; }
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
+    public String getDomainId() { return domainId; }
+    public void setDomainId(String domainId) { this.domainId = domainId; }
     public String getDifficulty() { return difficulty; }
     public void setDifficulty(String difficulty) { this.difficulty = difficulty; }
     public String getStatus() { return status; }

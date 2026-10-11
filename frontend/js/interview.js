@@ -6,12 +6,19 @@ let timerHandle = null;
 let voiceEnabled = true;
 let lastSpokenFeedback = "";
 let advancing = false;
+let isEvaluating = false;
+let interviewComplete = false;
+let queuedQuestion = null;
+let selectedDomainId = "software-engineering";
+const EVAL_SLOW_MS = 10000;
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!Auth.requireAuth()) return;
 
+  renderDomainPicker();
   document.getElementById("startForm").addEventListener("submit", onStart);
   document.getElementById("submitAnswerBtn").addEventListener("click", onSubmitAnswer);
+  document.getElementById("nextQuestionBtn").addEventListener("click", onNextQuestion);
   document.getElementById("endBtn").addEventListener("click", onEndSession);
   document.getElementById("micBtn").addEventListener("click", onMicToggle);
   document.getElementById("replayQuestionBtn").addEventListener("click", () => speakCurrentQuestion(false));
@@ -76,25 +83,80 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
+function renderDomainPicker() {
+  const picker = document.getElementById("domainPicker");
+  const hidden = document.getElementById("domainId");
+  const domains = window.SMARTPREP_DOMAINS || [];
+  const groups = [];
+  domains.forEach((domain) => {
+    if (!groups.includes(domain.group)) groups.push(domain.group);
+  });
+  picker.innerHTML = "";
+  groups.forEach((group) => {
+    const section = document.createElement("section");
+    const label = document.createElement("p");
+    label.className = "domain-group-label";
+    label.textContent = group;
+    const grid = document.createElement("div");
+    grid.className = "domain-grid";
+    domains.filter((domain) => domain.group === group).forEach((domain) => {
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = "domain-card" + (domain.id === selectedDomainId ? " is-selected" : "");
+      card.setAttribute("role", "option");
+      card.setAttribute("aria-selected", domain.id === selectedDomainId ? "true" : "false");
+      card.innerHTML =
+        `<span class="domain-card-name"></span>` +
+        `<span class="domain-card-desc"></span>`;
+      card.querySelector(".domain-card-name").textContent = domain.name;
+      card.querySelector(".domain-card-desc").textContent = domain.description;
+      card.addEventListener("click", () => {
+        selectedDomainId = domain.id;
+        hidden.value = domain.id;
+        picker.querySelectorAll(".domain-card").forEach((node) => {
+          const on = node === card;
+          node.classList.toggle("is-selected", on);
+          node.setAttribute("aria-selected", on ? "true" : "false");
+        });
+      });
+      grid.appendChild(card);
+    });
+    section.appendChild(label);
+    section.appendChild(grid);
+    picker.appendChild(section);
+  });
+  hidden.value = selectedDomainId;
+}
+
 async function onStart(e) {
   e.preventDefault();
   const setupError = document.getElementById("setupError");
   setupError.classList.add("hidden");
   voiceEnabled = document.getElementById("voiceEnabled").checked;
 
-  const role = document.getElementById("role").value;
+  const domainId = document.getElementById("domainId").value;
+  const domain = (window.SMARTPREP_DOMAINS || []).find((item) => item.id === domainId);
   const difficulty = document.getElementById("difficulty").value;
+  if (!domain) {
+    setupError.textContent = "Choose a domain before starting.";
+    setupError.classList.remove("hidden");
+    return;
+  }
 
   try {
     setStatus("Starting…");
-    const data = await Api.post("/interviews/start", { role, difficulty });
+    const data = await Api.post("/interviews/start", {
+      role: domain.name,
+      domainId,
+      difficulty,
+    });
     sessionId = data.sessionId;
     currentQuestion = data.question;
     questionIndex = 1;
 
     document.getElementById("setupView").classList.add("hidden");
     document.getElementById("roomView").classList.remove("hidden");
-    document.getElementById("roleLabel").textContent = role;
+    document.getElementById("roleLabel").textContent = data.role || domain.name;
     document.getElementById("voiceDock").classList.toggle("voice-dock-disabled", !voiceEnabled);
     renderQuestion(currentQuestion);
     startTimer();
@@ -108,6 +170,7 @@ async function onStart(e) {
 }
 
 async function onSubmitAnswer() {
+  if (isEvaluating) return;
   const roomError = document.getElementById("roomError");
   roomError.classList.add("hidden");
   VoiceCoach.stopListening();
@@ -120,8 +183,18 @@ async function onSubmitAnswer() {
     return;
   }
 
+  isEvaluating = true;
+  advancing = true;
+  queuedQuestion = null;
+  interviewComplete = false;
+  setEvaluating(true, "Evaluating your answer...");
+  const slowTimer = setTimeout(() => {
+    if (isEvaluating) {
+      setEvaluating(true, "Still analyzing your answer. This can take a moment.");
+    }
+  }, EVAL_SLOW_MS);
+
   try {
-    advancing = true;
     setStatus("Evaluating…");
     const data = await Api.post(`/interviews/${sessionId}/answer`, {
       questionId: currentQuestion.id,
@@ -130,35 +203,86 @@ async function onSubmitAnswer() {
 
     showFeedback(data.evaluation);
     document.getElementById("answer").value = "";
-    document.getElementById("voiceLiveLine").textContent = "Coaching ready.";
+    document.getElementById("voiceLiveLine").textContent = "Review the feedback, then continue when you are ready.";
+    interviewComplete = Boolean(data.completed);
+    queuedQuestion = data.nextQuestion || null;
+    revealNextAction();
 
     if (voiceEnabled && data.evaluation) {
       lastSpokenFeedback =
         data.evaluation.spokenFeedback ||
         buildFallbackSpeech(data.evaluation);
-      await VoiceCoach.speak(lastSpokenFeedback);
+      VoiceCoach.speak(lastSpokenFeedback);
     }
 
-    if (data.completed) {
-      setStatus("Complete");
-      stopTimer();
-      advancing = false;
-      window.location.href = `results.html?sessionId=${sessionId}`;
-      return;
-    }
-
-    currentQuestion = data.nextQuestion;
-    questionIndex += 1;
-    renderQuestion(currentQuestion);
-    advancing = false;
-    setStatus("Your turn");
-    await speakCurrentQuestion(true);
+    setStatus(interviewComplete ? "Review feedback" : "Feedback ready");
   } catch (error) {
-    advancing = false;
     roomError.textContent = error.message;
     roomError.classList.remove("hidden");
     setStatus("Your turn");
+  } finally {
+    clearTimeout(slowTimer);
+    isEvaluating = false;
+    advancing = false;
+    setEvaluating(false);
   }
+}
+
+async function onNextQuestion() {
+  const nextBtn = document.getElementById("nextQuestionBtn");
+  const roomError = document.getElementById("roomError");
+  if (isEvaluating || nextBtn.disabled) return;
+  roomError.classList.add("hidden");
+  VoiceCoach.stopListening();
+  VoiceCoach.stopSpeaking();
+
+  if (interviewComplete) {
+    stopTimer();
+    window.location.href = `results.html?sessionId=${sessionId}`;
+    return;
+  }
+
+  nextBtn.disabled = true;
+  try {
+    let question = queuedQuestion;
+    if (!question) {
+      setStatus("Next question…");
+      const data = await Api.post(`/interviews/${sessionId}/next`, {});
+      question = data.question;
+      if (data.questionIndex) questionIndex = data.questionIndex;
+      else questionIndex += 1;
+    } else {
+      questionIndex += 1;
+    }
+    queuedQuestion = null;
+    currentQuestion = question;
+    renderQuestion(currentQuestion);
+    setStatus("Your turn");
+    await speakCurrentQuestion(true);
+  } catch (error) {
+    roomError.textContent = error.message;
+    roomError.classList.remove("hidden");
+    nextBtn.disabled = false;
+    setStatus("Feedback ready");
+  }
+}
+
+function setEvaluating(active, message) {
+  const status = document.getElementById("evalStatus");
+  const submitBtn = document.getElementById("submitAnswerBtn");
+  const nextBtn = document.getElementById("nextQuestionBtn");
+  status.classList.toggle("hidden", !active);
+  if (message) document.getElementById("evalStatusText").textContent = message;
+  submitBtn.disabled = active;
+  if (active) nextBtn.classList.add("hidden");
+}
+
+function revealNextAction() {
+  const nextBtn = document.getElementById("nextQuestionBtn");
+  const label = document.getElementById("nextQuestionLabel");
+  label.textContent = interviewComplete ? "Finish Interview" : "Next Question";
+  nextBtn.disabled = false;
+  nextBtn.classList.remove("hidden");
 }
 
 async function onEndSession() {
@@ -199,6 +323,11 @@ function renderQuestion(question) {
   document.getElementById("roundLabel").textContent = `Question ${questionIndex}`;
   document.getElementById("questionText").textContent = question.questionText;
   document.getElementById("feedbackBox").classList.add("hidden");
+  document.getElementById("nextQuestionBtn").classList.add("hidden");
+  document.getElementById("evalStatus").classList.add("hidden");
+  document.getElementById("submitAnswerBtn").disabled = false;
+  document.getElementById("liveHint").textContent =
+    "After each answer the coach scores you, explains what worked, what missed, and how a stronger answer sounds.";
 }
 
 async function speakCurrentQuestion(withIntro) {
@@ -224,9 +353,7 @@ function showFeedback(evaluation) {
     evaluation.whyWrong || evaluation.improvements || "Add more specificity.";
   document.getElementById("feedbackBetter").textContent =
     evaluation.betterAnswer || "Lead with approach, then example, then trade-off and result.";
-  document.getElementById("liveHint").textContent = evaluation.strengths
-    ? `Strength: ${evaluation.strengths}`
-    : "Adaptive next question ready.";
+  document.getElementById("liveHint").textContent = "Review this feedback, then choose when to continue.";
   lastSpokenFeedback = evaluation.spokenFeedback || buildFallbackSpeech(evaluation);
 }
 

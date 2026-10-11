@@ -14,7 +14,9 @@
       href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap"
       rel="stylesheet"
     />
+    <meta name="theme-color" content="#05060A" />
     <link rel="stylesheet" href="css/styles.css" />
+    <link rel="stylesheet" href="css/design-system.css" />
   </head>
   <body>
     <div class="page-shell">
@@ -43,16 +45,11 @@
             <p class="page-sub">
               Voice-first interview room: the coach asks aloud, you answer by mic, then it explains what was right and wrong.
             </p>
-            <form class="form-card" id="startForm">
+            <form class="form-card form-card-wide" id="startForm">
               <div class="form-group">
-                <label for="role">Interview role</label>
-                <select id="role" required>
-                  <option value="Software Engineer">Software Engineer</option>
-                  <option value="Data Analyst">Data Analyst</option>
-                  <option value="Product Manager">Product Manager</option>
-                  <option value="System Design">System Design</option>
-                  <option value="HR / Behavioral">HR / Behavioral</option>
-                </select>
+                <label id="domainLabel">Choose your domain</label>
+                <input type="hidden" id="domainId" name="domainId" value="software-engineering" />
+                <div id="domainPicker" class="domain-picker" role="listbox" aria-labelledby="domainLabel"></div>
               </div>
               <div class="form-group">
                 <label for="difficulty">Difficulty</label>
@@ -133,6 +130,10 @@
                 <p class="block-text" id="liveHint">
                   After each answer the coach scores you, explains what worked, what missed, and how a stronger answer sounds.
                 </p>
+                <div class="eval-status hidden" id="evalStatus" aria-live="polite">
+                  <span class="eval-spinner" aria-hidden="true"></span>
+                  <p id="evalStatusText">Evaluating your answer...</p>
+                </div>
                 <div class="feedback-box hidden" id="feedbackBox">
                   <div class="verdict-pill" id="feedbackVerdict">—</div>
                   <h3>Score: <span id="feedbackScore">—</span>/10</h3>
@@ -151,10 +152,16 @@
                     <h4>Stronger answer</h4>
                     <p id="feedbackBetter"></p>
                   </div>
-                  <button class="pill pill-light" type="button" id="replayFeedbackBtn">
-                    <span class="pill-dot">♪</span>
-                    Replay coaching
-                  </button>
+                  <div class="feedback-actions">
+                    <button class="pill hidden" type="button" id="nextQuestionBtn">
+                      <span class="pill-dot">→</span>
+                      <span id="nextQuestionLabel">Next Question</span>
+                    </button>
+                    <button class="pill pill-light" type="button" id="replayFeedbackBtn">
+                      <span class="pill-dot">♪</span>
+                      Replay coaching
+                    </button>
+                  </div>
                 </div>
               </aside>
             </div>
@@ -163,10 +170,14 @@
       </div>
     </div>
 
+    <script src="js/domains.js"></script>
     <script src="js/config.js"></script>
     <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/voice.js"></script>
     <script src="js/interview.js"></script>
+  
+    <script type="module" src="js/ui-core.js"></script>
+    <script type="module" src="js/scenes/voice-orb.js"></script>
   </body>
 </html>

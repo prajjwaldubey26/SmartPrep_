@@ -22,6 +22,11 @@ public class InterviewController {
         return interviewService.start(currentUserId(auth), request);
     }
 
+    @PostMapping("/{sessionId}/next")
+    public Map<String, Object> next(Authentication auth, @PathVariable Long sessionId) {
+        return interviewService.nextQuestion(currentUserId(auth), sessionId);
+    }
+
     @PostMapping("/{sessionId}/answer")
     public Map<String, Object> answer(
             Authentication auth,

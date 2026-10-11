@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS interview_sessions (
   id BIGSERIAL PRIMARY KEY,
   user_id BIGINT NOT NULL REFERENCES users(id),
   role VARCHAR(120) NOT NULL,
+  domain_id VARCHAR(64) NULL,
   difficulty VARCHAR(40) NOT NULL,
   status VARCHAR(40) NOT NULL,
   average_score DOUBLE PRECISION,

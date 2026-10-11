@@ -14,7 +14,9 @@
       href="https://fonts.googleapis.com/css2?family=Lexend:wght@200;300;400;500;600&family=Syne:wght@500;600;700&display=swap"
       rel="stylesheet"
     />
+    <meta name="theme-color" content="#05060A" />
     <link rel="stylesheet" href="css/styles.css" />
+    <link rel="stylesheet" href="css/design-system.css" />
   </head>
   <body class="studio-body">
     <div class="studio-shell">
@@ -50,7 +52,7 @@
                 <path d="M5 10a7 7 0 0 0 14 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
               </svg>
             </a>
-            <a class="dock-tile active" href="chatbot.html" title="Coach Chat" aria-label="Coach Chat">
+            <a class="dock-tile active" href="chatbot.html" title="Coach Chat" aria-label="Coach">
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M5 6.5A2.5 2.5 0 0 1 7.5 4h9A2.5 2.5 0 0 1 19 6.5v7A2.5 2.5 0 0 1 16.5 16H10l-4 3v-3H7.5A2.5 2.5 0 0 1 5 13.5v-7Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
               </svg>
@@ -123,5 +125,7 @@
     <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
     <script src="js/chatbot.js"></script>
+  
+    <script type="module" src="js/ui-core.js"></script>
   </body>
 </html>

@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS interview_sessions (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   user_id BIGINT NOT NULL,
   role VARCHAR(120) NOT NULL,
+  domain_id VARCHAR(64) NULL,
   difficulty VARCHAR(40) NOT NULL,
   status VARCHAR(40) NOT NULL,
   average_score DOUBLE,
