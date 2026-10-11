@@ -15,6 +15,28 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="css/styles.css" />
+    <style>
+      #signInBtn:disabled {
+        cursor: progress;
+        color: #fff;
+        opacity: 1;
+      }
+      #signInBtn:disabled:hover {
+        transform: none;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+      }
+      #signInDot.is-loading {
+        font-size: 0;
+        border: 2px solid rgba(17, 17, 17, 0.18);
+        border-top-color: #111;
+        animation: signin-spin 0.7s linear infinite;
+      }
+      @keyframes signin-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
   </head>
   <body>
     <div class="page-shell">
@@ -44,9 +66,9 @@
               <input id="password" name="password" type="password" required placeholder="••••••••" />
             </div>
             <div class="form-actions">
-              <button class="pill" type="submit">
-                <span class="pill-dot">→</span>
-                Sign in
+              <button class="pill" type="submit" id="signInBtn">
+                <span class="pill-dot" id="signInDot" aria-hidden="true">→</span>
+                <span id="signInLabel">Sign in</span>
               </button>
               <span class="muted-link">New here? <a href="register.html">Register</a></span>
             </div>
@@ -60,18 +82,57 @@
     <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
     <script>
+      const SIGN_IN_TIMEOUT_MS = 45000;
+      let isLoading = false;
+
+      const signInBtn = document.getElementById("signInBtn");
+      const signInDot = document.getElementById("signInDot");
+      const signInLabel = document.getElementById("signInLabel");
+      const errorBox = document.getElementById("errorBox");
+
+      function setLoading(next) {
+        isLoading = next;
+        signInBtn.disabled = isLoading;
+        signInBtn.setAttribute("aria-busy", isLoading ? "true" : "false");
+        signInLabel.textContent = isLoading ? "Signing in..." : "Sign in";
+        signInDot.classList.toggle("is-loading", isLoading);
+        signInDot.textContent = isLoading ? "" : "→";
+      }
+
+      function showError(message) {
+        errorBox.textContent = message;
+        errorBox.classList.remove("hidden");
+      }
+
       document.getElementById("loginForm").addEventListener("submit", async (e) => {
         e.preventDefault();
-        const errorBox = document.getElementById("errorBox");
+        if (isLoading) return;
+
         errorBox.classList.add("hidden");
+        setLoading(true);
+        let timeoutId;
+
         try {
           const email = document.getElementById("email").value.trim();
           const password = document.getElementById("password").value;
-          await Auth.login(email, password);
+          const loginPromise = Auth.login(email, password);
+          loginPromise.catch(() => {});
+          const timeoutPromise = new Promise((_, reject) => {
+            timeoutId = setTimeout(() => {
+              reject(
+                new Error(
+                  "Sign in is taking too long. The server may be waking up — please try again."
+                )
+              );
+            }, SIGN_IN_TIMEOUT_MS);
+          });
+          await Promise.race([loginPromise, timeoutPromise]);
           window.location.href = "dashboard.html";
         } catch (err) {
-          errorBox.textContent = err.message || "Login failed";
-          errorBox.classList.remove("hidden");
+          showError(err.message || "Sign in failed. Please check your email and password, then try again.");
+          setLoading(false);
+        } finally {
+          clearTimeout(timeoutId);
         }
       });
     </script>
