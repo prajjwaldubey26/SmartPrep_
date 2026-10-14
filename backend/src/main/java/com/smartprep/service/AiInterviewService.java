@@ -1,6 +1,7 @@
 package com.smartprep.service;
 
 import com.smartprep.domain.InterviewDomain;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -86,6 +87,63 @@ public class AiInterviewService {
         return fallbackQuestion(domain, difficulty, orderNo, previousAnswer, avoid, angle);
     }
 
+    /**
+     * Builds the full question list from the domain bank with no network call,
+     * so every interview step is ready before the candidate opens the room.
+     */
+    public List<String> prepareQuestions(
+            InterviewDomain domain,
+            String difficulty,
+            int count,
+            List<String> avoidQuestions) {
+        List<String> avoid = new ArrayList<>();
+        if (avoidQuestions != null) {
+            for (String prior : avoidQuestions) {
+                if (prior != null && !prior.isBlank()) {
+                    avoid.add(prior.trim());
+                }
+            }
+        }
+
+        List<String> bank = new ArrayList<>(domain.fallbackQuestions() == null
+                ? List.of()
+                : domain.fallbackQuestions());
+        if (bank.isEmpty()) {
+            bank.add("Walk through a recent " + domain.name() + " problem you owned. What did you decide, and what changed because of it?");
+        }
+        Collections.shuffle(bank, ThreadLocalRandom.current());
+
+        List<String> chosen = new ArrayList<>();
+        for (String candidate : bank) {
+            if (chosen.size() >= count) break;
+            if (candidate == null || candidate.isBlank()) continue;
+            if (isTooSimilar(candidate, avoid)) continue;
+            chosen.add(finishQuestion(candidate, difficulty, pickAngle(domain)));
+            avoid.add(candidate);
+        }
+
+        int guard = 0;
+        while (chosen.size() < count && guard < 12) {
+            guard++;
+            String angle = pickAngle(domain);
+            String base = bank.get(ThreadLocalRandom.current().nextInt(bank.size()));
+            String built = "Stay on " + angle + ". " + base;
+            if (isTooSimilar(built, avoid)) continue;
+            chosen.add(finishQuestion(built, difficulty, angle));
+            avoid.add(built);
+        }
+        return chosen;
+    }
+
+    private String finishQuestion(String question, String difficulty, String angle) {
+        String intensity = switch (difficulty == null ? "MEDIUM" : difficulty.toUpperCase(Locale.ROOT)) {
+            case "EASY" -> "Keep it practical and include one concrete example.";
+            case "HARD" -> "Push into trade-offs, failure modes, and measurable impact.";
+            default -> "Balance structure, depth, and a clear close.";
+        };
+        return question.trim() + " Focus on " + angle + ". " + intensity;
+    }
+
     public String upgradePlan(String role, double averageScore) {
         if (averageScore >= 8) {
             return "Advance to harder " + role + " mocks and pressure-test trade-offs. Drill one weak follow-up style daily: 'why this over the alternative?'";
@@ -126,7 +184,12 @@ public class AiInterviewService {
                         + "\nDifficulty: " + difficulty
                         + "\nQuestion: " + question
                         + "\nAnswer: " + answer;
-                String raw = llmClient.chat(system, List.of(Map.of("role", "user", "content", user)));
+                String raw = llmClient.chat(
+                        system,
+                        List.of(Map.of("role", "user", "content", user)),
+                        0.4,
+                        640,
+                        Duration.ofSeconds(18));
                 return parseLlmEvaluation(raw, question, answer, difficulty, domain);
             } catch (Exception ignored) {
                 // fallback

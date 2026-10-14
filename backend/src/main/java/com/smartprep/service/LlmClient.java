@@ -58,6 +58,15 @@ public class LlmClient {
     }
 
     public String chat(String systemPrompt, List<Map<String, String>> messages, double temperature) {
+        return chat(systemPrompt, messages, temperature, maxTokens, Duration.ofSeconds(90));
+    }
+
+    public String chat(
+            String systemPrompt,
+            List<Map<String, String>> messages,
+            double temperature,
+            int requestMaxTokens,
+            Duration timeout) {
         if (!enabled) {
             throw new IllegalStateException("LLM disabled");
         }
@@ -68,17 +77,20 @@ public class LlmClient {
                 payloadMessages.addAll(messages);
             }
 
+            int tokenBudget = requestMaxTokens > 0 ? requestMaxTokens : maxTokens;
+            Duration requestTimeout = timeout == null ? Duration.ofSeconds(90) : timeout;
+
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("model", model);
             body.put("temperature", Math.max(0.0, Math.min(1.5, temperature)));
             body.put("top_p", 0.95);
-            body.put("max_tokens", maxTokens);
+            body.put("max_tokens", tokenBudget);
             body.put("stream", false);
             body.put("messages", payloadMessages);
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(chatCompletionsUrl))
-                    .timeout(Duration.ofSeconds(90))
+                    .timeout(requestTimeout)
                     .header("Authorization", "Bearer " + apiKey)
                     .header("Content-Type", "application/json")
                     .header("Accept", "application/json")

@@ -235,6 +235,20 @@ a:focus-visible {
 .domain-card.is-selected .domain-card-desc { color: #c5cad8; }
 
 .question-text { font-family: var(--font-display); letter-spacing: -0.03em; }
+.step-dot {
+  border-color: var(--border-strong);
+  color: var(--text-muted);
+  background: transparent;
+}
+.step-dot.is-done,
+.step-dot.is-current {
+  background: linear-gradient(180deg, #6366f1, #4338ca);
+  color: #fff;
+  border-color: transparent;
+}
+.step-dot.is-current {
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.28);
+}
 .room-orb {
   background: radial-gradient(circle at 35% 30%, #c4b5fd, #6366f1 42%, #0e7490 78%);
   box-shadow: 0 0 40px rgba(99, 102, 241, 0.45), inset 0 0 20px rgba(255, 255, 255, 0.25);

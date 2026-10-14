@@ -45,13 +45,14 @@ public class InterviewService {
         session.setStatus("IN_PROGRESS");
         sessionRepository.save(session);
 
-        Question question = createQuestion(session, 1, null);
+        List<Question> prepared = prepareSessionQuestions(session);
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("sessionId", session.getId());
         response.put("domainId", session.getDomainId());
         response.put("role", session.getRole());
         response.put("difficulty", session.getDifficulty());
-        response.put("question", toQuestionMap(question));
+        response.put("questionCount", prepared.size());
+        response.put("question", toQuestionMap(prepared.get(0)));
         return response;
     }
 
@@ -105,10 +106,14 @@ public class InterviewService {
         evaluationMap.put("spokenFeedback", evaluation.getSpokenFeedback());
         response.put("evaluation", evaluationMap);
         response.put("completed", completed);
+        response.put("questionCount", aiInterviewService.questionsPerSession());
 
-        response.put("nextQuestion", null);
         if (completed) {
             finalizeSession(session);
+            response.put("nextQuestion", null);
+        } else {
+            Question next = ensureQuestion(session, question.getOrderNo() + 1, answer.getAnswerText());
+            response.put("nextQuestion", toQuestionMap(next));
         }
         return response;
     }
@@ -125,19 +130,22 @@ public class InterviewService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No question to continue from");
         }
 
-        Question latest = questions.get(questions.size() - 1);
-        if (answerRepository.findByQuestionId(latest.getId()).isEmpty()) {
-            return questionResponse(latest);
+        Question pending = firstUnanswered(questions);
+        int total = aiInterviewService.questionsPerSession();
+        if (pending != null) {
+            return questionResponse(pending, total);
         }
-        if (latest.getOrderNo() >= aiInterviewService.questionsPerSession()) {
+
+        Question latest = questions.get(questions.size() - 1);
+        if (latest.getOrderNo() >= total) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Interview is already complete");
         }
 
         String previousAnswer = answerRepository.findByQuestionId(latest.getId())
                 .map(Answer::getAnswerText)
                 .orElse(null);
-        Question next = createQuestion(session, latest.getOrderNo() + 1, previousAnswer);
-        return questionResponse(next);
+        Question next = ensureQuestion(session, latest.getOrderNo() + 1, previousAnswer);
+        return questionResponse(next, total);
     }
 
     @Transactional
@@ -204,15 +212,53 @@ public class InterviewService {
         return report;
     }
 
-    private Question createQuestion(InterviewSession session, int orderNo, String previousAnswer) {
-        List<String> avoid = collectAvoidQuestions(session);
+    private List<Question> prepareSessionQuestions(InterviewSession session) {
+        InterviewDomain domain = domainOf(session);
+        int total = aiInterviewService.questionsPerSession();
+        List<String> texts = aiInterviewService.prepareQuestions(
+                domain, session.getDifficulty(), total, collectAvoidQuestions(session));
+        List<Question> saved = new ArrayList<>();
+        int orderNo = 1;
+        for (String text : texts) {
+            saved.add(saveQuestion(session, domain, orderNo++, text));
+        }
+        if (saved.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Could not prepare interview steps");
+        }
+        return saved;
+    }
+
+    private Question firstUnanswered(List<Question> questions) {
+        for (Question question : questions) {
+            if (answerRepository.findByQuestionId(question.getId()).isEmpty()) {
+                return question;
+            }
+        }
+        return null;
+    }
+
+    private Question ensureQuestion(InterviewSession session, int orderNo, String previousAnswer) {
+        List<Question> existing = questionRepository.findBySessionIdOrderByOrderNoAsc(session.getId());
+        for (Question question : existing) {
+            if (question.getOrderNo() != null && question.getOrderNo() == orderNo) {
+                return question;
+            }
+        }
+        InterviewDomain domain = domainOf(session);
+        List<String> texts = aiInterviewService.prepareQuestions(
+                domain, session.getDifficulty(), 1, collectAvoidQuestions(session));
+        String text = texts.isEmpty()
+                ? aiInterviewService.generateQuestion(domain, session.getDifficulty(), orderNo, previousAnswer, List.of())
+                : texts.get(0);
+        return saveQuestion(session, domain, orderNo, text);
+    }
+
+    private Question saveQuestion(InterviewSession session, InterviewDomain domain, int orderNo, String text) {
         Question question = new Question();
         question.setSessionId(session.getId());
         question.setOrderNo(orderNo);
-        InterviewDomain domain = domainOf(session);
         question.setCategory(domain.id());
-        question.setQuestionText(aiInterviewService.generateQuestion(
-                domain, session.getDifficulty(), orderNo, previousAnswer, avoid));
+        question.setQuestionText(text);
         return questionRepository.save(question);
     }
 
@@ -282,10 +328,11 @@ public class InterviewService {
         return session;
     }
 
-    private Map<String, Object> questionResponse(Question question) {
+    private Map<String, Object> questionResponse(Question question, int questionCount) {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("question", toQuestionMap(question));
         response.put("questionIndex", question.getOrderNo());
+        response.put("questionCount", questionCount);
         return response;
     }
 

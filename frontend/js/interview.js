@@ -10,6 +10,7 @@ let isEvaluating = false;
 let interviewComplete = false;
 let queuedQuestion = null;
 let selectedDomainId = "software-engineering";
+let questionTotal = 5;
 const EVAL_SLOW_MS = 10000;
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -143,7 +144,13 @@ async function onStart(e) {
     return;
   }
 
+  const submitBtn = e.target.querySelector("button[type='submit']");
+  const submitLabel = submitBtn ? submitBtn.innerHTML : "";
   try {
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Setting up your steps…";
+    }
     setStatus("Starting…");
     const data = await Api.post("/interviews/start", {
       role: domain.name,
@@ -152,7 +159,8 @@ async function onStart(e) {
     });
     sessionId = data.sessionId;
     currentQuestion = data.question;
-    questionIndex = 1;
+    questionIndex = data.question?.orderNo || 1;
+    questionTotal = data.questionCount || questionTotal;
 
     document.getElementById("setupView").classList.add("hidden");
     document.getElementById("roomView").classList.remove("hidden");
@@ -166,6 +174,10 @@ async function onStart(e) {
     setupError.textContent = error.message;
     setupError.classList.remove("hidden");
     setStatus("Ready");
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = submitLabel;
+    }
   }
 }
 
@@ -206,6 +218,7 @@ async function onSubmitAnswer() {
     document.getElementById("voiceLiveLine").textContent = "Review the feedback, then continue when you are ready.";
     interviewComplete = Boolean(data.completed);
     queuedQuestion = data.nextQuestion || null;
+    if (data.questionCount) questionTotal = data.questionCount;
     revealNextAction();
 
     if (voiceEnabled && data.evaluation) {
@@ -250,9 +263,11 @@ async function onNextQuestion() {
       const data = await Api.post(`/interviews/${sessionId}/next`, {});
       question = data.question;
       if (data.questionIndex) questionIndex = data.questionIndex;
+      else if (question?.orderNo) questionIndex = question.orderNo;
       else questionIndex += 1;
+      if (data.questionCount) questionTotal = data.questionCount;
     } else {
-      questionIndex += 1;
+      questionIndex = question.orderNo || questionIndex + 1;
     }
     queuedQuestion = null;
     currentQuestion = question;
@@ -320,7 +335,9 @@ function onMicToggle() {
 }
 
 function renderQuestion(question) {
-  document.getElementById("roundLabel").textContent = `Question ${questionIndex}`;
+  if (question?.orderNo) questionIndex = question.orderNo;
+  document.getElementById("roundLabel").textContent = `Question ${questionIndex} of ${questionTotal}`;
+  renderStepTrack();
   document.getElementById("questionText").textContent = question.questionText;
   document.getElementById("feedbackBox").classList.add("hidden");
   document.getElementById("nextQuestionBtn").classList.add("hidden");
@@ -338,6 +355,20 @@ async function speakCurrentQuestion(withIntro) {
       : "Next question. ";
   const line = `${withIntro ? intro : ""}${currentQuestion.questionText}`;
   await VoiceCoach.speak(line);
+}
+
+function renderStepTrack() {
+  const track = document.getElementById("stepTrack");
+  if (!track) return;
+  track.innerHTML = "";
+  for (let step = 1; step <= questionTotal; step += 1) {
+    const dot = document.createElement("span");
+    dot.className = "step-dot";
+    if (step < questionIndex) dot.classList.add("is-done");
+    if (step === questionIndex) dot.classList.add("is-current");
+    dot.textContent = String(step);
+    track.appendChild(dot);
+  }
 }
 
 function showFeedback(evaluation) {
