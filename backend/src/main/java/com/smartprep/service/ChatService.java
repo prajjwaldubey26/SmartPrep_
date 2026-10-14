@@ -25,11 +25,12 @@ public class ChatService {
             - Never output raw HTML tags such as <br>, <div>, or <span>.
             - Never dump a giant pipe-table unless the user explicitly asks for a table — and then keep it to 3 columns max.
             - Keep paragraphs short (1–3 sentences). Use blank lines between sections.
-            - Lead with the answer, then supporting detail. Do not ramble.
+            - Lead with the answer to the user's exact question, using their role, topic, and wording.
+            - Do not reply with a reusable framework unless they asked for a framework.
 
             Coaching rules:
             - Warm and conversational on greetings (2–4 sentences + 2–3 next prompts).
-            - For prep questions: include a framework, a concrete mini example, and a next action.
+            - For prep questions: answer their question directly, then one example that uses their topic, then one next action.
             - If the user asks for a sample answer, write a full 45–90 second spoken answer.
             - Push for measurable impact, trade-offs, and interviewer expectations.
             - Do not mention that you are a language model or NVIDIA/OpenAI.
@@ -57,14 +58,20 @@ public class ChatService {
                         messages.add(Map.of("role", role, "content", m.getContent()));
                     }
                 }
-                messages.add(Map.of("role", "user", "content", message));
-                return Map.of("reply", llmClient.chat(SYSTEM, messages));
+                if (messages.isEmpty() || !sameUserTurn(messages.get(messages.size() - 1), message)) {
+                    messages.add(Map.of("role", "user", "content", message));
+                }
+                return Map.of("reply", llmClient.coachReply(SYSTEM, messages));
             } catch (Exception ex) {
                 log.error("Live AI chat failed, using local coach fallback: {}", ex.getMessage());
             }
         }
 
         return Map.of("reply", craftLocal(message));
+    }
+
+    private boolean sameUserTurn(Map<String, String> last, String message) {
+        return "user".equals(last.get("role")) && message.equals(last.get("content"));
     }
 
     private String craftLocal(String original) {
